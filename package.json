@@ -4,7 +4,7 @@
   "description": "Interactive Music Theory, Acoustic Physics, Microtonal World Traditions & Audio Synthesis Explorable",
   "type": "module",
   "scripts": {
-    "start": "node server.js",
+    "dev": "node dev-server.js",
     "test": "node test_integrity.js && node test_i18n.js && node test_components.js && node test_theory_tab.js && node test_verification.js && node test_timbre_audio.js"
   },
   "keywords": [
