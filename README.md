@@ -1,6 +1,9 @@
 # Harmonix Lab 🪐🎵
 ### An Explorable Website for Interactive Music Theory, Acoustics Physics & Global Modes
 
+[![Live Demo](https://img.shields.io/badge/Live_Demo-harmonix--lab.vercel.app-00f2fe?style=for-the-badge&logo=vercel)](https://harmonix-lab.vercel.app)
+[![GitHub](https://img.shields.io/badge/GitHub-CrazyRock114%2FHARMONIXLAB-181717?style=for-the-badge&logo=github)](https://github.com/CrazyRock114/HARMONIXLAB)
+
 Harmonix Lab is an interactive, visual, and experimental web application designed to teach music theory from first principles. Rather than relying on dry sheet music drills, Harmonix Lab bridges **acoustics physics**, **mathematical ratios**, **world cultural traditions**, and **real-time mini-games** where learners explore sound through direct manipulation.
 
 ---
