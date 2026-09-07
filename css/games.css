@@ -1,0 +1,311 @@
+/**
+ * games.css
+ * Mini-Games Styling: The Style Chameleon Jukebox, Polyrhythm Tap Hero,
+ * Ear Hero Quest, and World Melody Matrix.
+ */
+
+/* Chameleon Jukebox */
+.styles-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 1.25rem;
+  margin: 1.5rem 0;
+}
+
+.style-card {
+  background: var(--bg-surface);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-lg);
+  padding: 1.25rem;
+  cursor: pointer;
+  display: flex;
+  gap: 1rem;
+  align-items: flex-start;
+  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+  position: relative;
+  overflow: hidden;
+}
+
+.style-card:hover {
+  background: var(--bg-surface-hover);
+  transform: translateY(-2px);
+  border-color: rgba(255, 255, 255, 0.2);
+}
+
+.style-card.active {
+  background: linear-gradient(135deg, rgba(0, 242, 254, 0.12), rgba(139, 92, 246, 0.12));
+  border-color: var(--accent-cyan);
+  box-shadow: 0 0 25px rgba(0, 242, 254, 0.2);
+}
+
+.style-icon {
+  font-size: 2.2rem;
+  filter: drop-shadow(0 2px 8px rgba(0, 0, 0, 0.4));
+}
+
+.style-info h4 {
+  font-size: 1.05rem;
+  font-weight: 700;
+  margin-bottom: 0.25rem;
+}
+
+.style-groove {
+  font-size: 0.82rem;
+  color: var(--text-muted);
+  line-height: 1.4;
+  margin-bottom: 0.6rem;
+}
+
+.style-tags {
+  display: flex;
+  gap: 0.4rem;
+  flex-wrap: wrap;
+}
+
+.badge-sm {
+  font-size: 0.7rem;
+  padding: 0.15rem 0.45rem;
+}
+
+/* Mixer Buttons */
+.mixer-controls {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.btn-pill.active-muted {
+  background: rgba(244, 63, 94, 0.2);
+  color: var(--accent-rose);
+  border-color: rgba(244, 63, 94, 0.4);
+}
+
+/* Polyrhythm Tap Hero */
+.dual-tap-pads {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1.5rem;
+  margin: 1.25rem 0;
+}
+
+.tap-pad {
+  height: 90px;
+  border-radius: var(--radius-lg);
+  border: 2px solid var(--border-subtle);
+  background: rgba(15, 23, 42, 0.7);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  user-select: none;
+  transition: all 0.1s ease;
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.3);
+}
+
+.pad-left {
+  border-color: rgba(0, 242, 254, 0.3);
+}
+
+.pad-right {
+  border-color: rgba(245, 158, 11, 0.3);
+}
+
+.tap-pad:active, .tap-pad.hit {
+  transform: scale(0.96);
+}
+
+.pad-left.hit {
+  background: var(--accent-cyan);
+  box-shadow: 0 0 25px var(--accent-cyan);
+}
+.pad-left.hit * { color: #040812 !important; }
+
+.pad-right.hit {
+  background: var(--accent-amber);
+  box-shadow: 0 0 25px var(--accent-amber);
+}
+.pad-right.hit * { color: #040812 !important; }
+
+.pad-key {
+  font-size: 1.75rem;
+  font-weight: 800;
+  font-family: var(--font-mono);
+  line-height: 1;
+}
+
+.pad-label {
+  font-size: 0.8rem;
+  color: var(--text-muted);
+  margin-top: 0.25rem;
+}
+
+.game-stats-box {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1rem;
+  margin-bottom: 1.5rem;
+}
+
+.stat-card {
+  background: rgba(0, 0, 0, 0.25);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  padding: 1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.judgment-banner {
+  background: rgba(0, 0, 0, 0.4);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  padding: 1.25rem;
+  text-align: center;
+  min-height: 70px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.judgment-text {
+  font-size: 1.4rem;
+  font-weight: 800;
+  font-family: var(--font-mono);
+  letter-spacing: 0.04em;
+}
+
+/* Ear Hero Quest */
+.answers-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 0.75rem;
+  margin: 1.25rem 0;
+}
+
+.btn-answer {
+  padding: 0.85rem;
+  font-size: 0.95rem;
+  font-weight: 600;
+}
+
+.btn-answer.btn-success {
+  background: rgba(16, 185, 129, 0.25);
+  color: var(--accent-emerald);
+  border-color: var(--accent-emerald);
+}
+
+.btn-answer.btn-danger {
+  background: rgba(244, 63, 94, 0.25);
+  color: var(--accent-rose);
+  border-color: var(--accent-rose);
+}
+
+/* World Melody Matrix (Step Sequencer) */
+.matrix-grid-container {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  background: rgba(0, 0, 0, 0.4);
+  padding: 1rem;
+  border-radius: var(--radius-md);
+  margin-top: 1.5rem;
+  overflow-x: auto;
+}
+
+.matrix-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.matrix-row-label {
+  width: 48px;
+  font-family: var(--font-mono);
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: var(--text-muted);
+  text-align: right;
+  flex-shrink: 0;
+}
+
+.matrix-cells-wrapper {
+  display: flex;
+  gap: 4px;
+  flex: 1;
+}
+
+.matrix-cell {
+  flex: 1;
+  height: 28px;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid var(--border-subtle);
+  border-radius: 4px;
+  cursor: pointer;
+  transition: background 0.1s ease, transform 0.1s ease;
+  min-width: 22px;
+}
+
+.matrix-cell:hover {
+  background: rgba(255, 255, 255, 0.12);
+}
+
+.matrix-cell.beat-down {
+  border-left: 2px solid rgba(255, 255, 255, 0.2);
+}
+
+.matrix-cell.active {
+  background: var(--accent-cyan);
+  box-shadow: 0 0 10px var(--accent-cyan);
+}
+
+.matrix-cell.current-step {
+  border-color: #ffffff;
+  transform: scaleY(1.1);
+}
+
+.matrix-cell.active.current-step {
+  background: #ffffff;
+  box-shadow: 0 0 14px #ffffff;
+}
+
+/* Toggle Switch (Checkbox) */
+.toggle-container {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  cursor: pointer;
+}
+
+.toggle-container input {
+  display: none;
+}
+
+.toggle-slider {
+  width: 42px;
+  height: 24px;
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: var(--radius-full);
+  position: relative;
+  transition: background 0.2s ease;
+}
+
+.toggle-slider::after {
+  content: '';
+  position: absolute;
+  top: 3px;
+  left: 3px;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: #ffffff;
+  transition: transform 0.2s ease;
+}
+
+.toggle-container input:checked + .toggle-slider {
+  background: var(--accent-cyan);
+}
+
+.toggle-container input:checked + .toggle-slider::after {
+  transform: translateX(18px);
+}

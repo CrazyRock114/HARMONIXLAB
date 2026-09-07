@@ -1,0 +1,224 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Harmonix Lab | Interactive Music Theory, Physics & Global Modes</title>
+  <meta name="description" content="An interactive explorable web lab for learning music theory through the physics of sound waves, mathematical tuning, global modes, and real-time interactive mini-games.">
+
+  <!-- Core Stylesheets -->
+  <link rel="stylesheet" href="./css/main.css">
+  <link rel="stylesheet" href="./css/visualizers.css">
+  <link rel="stylesheet" href="./css/games.css">
+  <link rel="stylesheet" href="./css/responsive.css">
+
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🎵</text></svg>">
+</head>
+<body>
+
+  <!-- Audio Unlock Sticky Banner -->
+  <div class="audio-banner" id="audioUnlockBanner">
+    <div class="banner-content">
+      <span class="banner-icon">🔊</span>
+      <span data-i18n="app.audioUnlockText"><strong>Interactive Audio Engine</strong>: Click anywhere or tap Enable Audio to activate real-time synthesized sound!</span>
+    </div>
+    <button class="btn btn-primary btn-sm" id="btnUnlockAudio" data-i18n="app.enableAudio">Enable Audio</button>
+  </div>
+
+  <!-- Main Navigation & Global HUD Header -->
+  <header class="app-header">
+    <div class="logo-area">
+      <span class="brand-icon">🪐</span>
+      <div class="brand-text">
+        <h1 class="brand-title" data-i18n="app.title">HARMONIX LAB</h1>
+        <p class="brand-subtitle" data-i18n="app.subtitle">Interactive Acoustics & Music Theory</p>
+      </div>
+    </div>
+
+    <!-- Tab Navigation -->
+    <nav class="nav-tabs">
+      <button class="nav-tab-btn active" data-tab="games">
+        <span>🎮</span> <span data-i18n="nav.games">Mini-Games</span>
+      </button>
+      <button class="nav-tab-btn" data-tab="physics">
+        <span>〰️</span> <span data-i18n="nav.physics">Physics & Waves</span>
+      </button>
+      <button class="nav-tab-btn" data-tab="theory">
+        <span>🌈</span> <span data-i18n="nav.theory">Scales & Modes</span>
+      </button>
+      <button class="nav-tab-btn" data-tab="rhythm">
+        <span>🥁</span> <span data-i18n="nav.rhythm">Rhythm & Geometry</span>
+      </button>
+      <button class="nav-tab-btn" data-tab="timbre">
+        <span>🎛️</span> <span data-i18n="nav.timbre">Timbre & Harmonics</span>
+      </button>
+    </nav>
+
+    <!-- Header HUD / Oscilloscope -->
+    <div class="header-hud">
+      <!-- Language Selector -->
+      <select id="languageSelect" class="lang-select" aria-label="Select Language" title="Change Language">
+        <option value="en">🇺🇸 English</option>
+        <option value="de">🇩🇪 Deutsch</option>
+        <option value="fr">🇫🇷 Français</option>
+        <option value="it">🇮🇹 Italiano</option>
+        <option value="ja">🇯🇵 日本語</option>
+        <option value="ko">🇰🇷 한국어</option>
+        <option value="zh-CN">🇨🇳 简体中文</option>
+        <option value="zh-TW">🇹🇼 繁體中文</option>
+      </select>
+
+      <div class="hud-oscilloscope" title="Real-time Master Oscilloscope">
+        <canvas id="hudOscilloscopeCanvas" width="90" height="26"></canvas>
+      </div>
+
+      <div class="hud-audio-status">
+        <div class="status-led" id="audioStatusLed"></div>
+        <span id="audioStatusText" data-i18n="app.audioStandby">AUDIO STANDBY</span>
+      </div>
+
+      <div class="volume-control">
+        <span>🔈</span>
+        <input type="range" id="globalVolumeSlider" class="volume-slider" min="0" max="1" step="0.05" value="0.35" title="Master Volume">
+      </div>
+
+      <button class="btn btn-pill btn-sm" id="btnOpenHelp" title="About & Quick Guide">❓ <span data-i18n="app.guide">Guide</span></button>
+    </div>
+  </header>
+
+  <!-- Main Content Container -->
+  <main class="app-main">
+
+    <!-- ==================== TAB 1: MINI-GAMES ==================== -->
+    <section class="tab-section active" id="tab-games">
+      <div class="tab-hero">
+        <h2 data-i18n="heroes.gamesTitle">Interactive Music Mini-Games</h2>
+        <p data-i18n="heroes.gamesDesc">
+          Experience theory by playing with it! Rearrange songs into different styles in real time, 
+          challenge your two-handed polyrhythm coordination, test your acoustic ear, and paint modal melodies.
+        </p>
+      </div>
+
+      <!-- Game 1: The Style Chameleon Jukebox -->
+      <div id="styleChameleonContainer"></div>
+
+      <!-- Game 2: Polyrhythm Tap Hero -->
+      <div id="polyrhythmTapContainer" style="margin-top: 2rem;"></div>
+
+      <!-- Game 3: Ear Hero & Lissajous Quest -->
+      <div id="earHeroQuestContainer" style="margin-top: 2rem;"></div>
+
+      <!-- Game 4: World Melody Matrix -->
+      <div id="melodyMatrixContainer" style="margin-top: 2rem;"></div>
+    </section>
+
+    <!-- ==================== TAB 2: PHYSICS & ACOUSTICS ==================== -->
+    <section class="tab-section" id="tab-physics">
+      <div class="tab-hero">
+        <h2 data-i18n="heroes.physicsTitle">The Physics & Mathematics of Sound</h2>
+        <p data-i18n="heroes.physicsDesc">
+          Music is mathematics made audible. Explore standing wave vibrations on strings, wave superposition, 
+          acoustic beating, the natural overtone series, and the ancient mathematical dilemma of the Pythagorean Comma.
+        </p>
+      </div>
+
+      <!-- Standing Waves & Beating -->
+      <div id="waveformLabContainer"></div>
+
+      <!-- Harmonic Series & Pythagorean Comma -->
+      <div id="harmonicSeriesContainer" style="margin-top: 2rem;"></div>
+
+      <!-- Consonance / Dissonance Psychoacoustics -->
+      <div id="consonanceGraphContainer" style="margin-top: 2rem;"></div>
+    </section>
+
+    <!-- ==================== TAB 3: SCALES & HARMONY ==================== -->
+    <section class="tab-section" id="tab-theory">
+      <div class="tab-hero">
+        <h2 data-i18n="heroes.theoryTitle">Scales, Modes & The Geometry of Harmony</h2>
+        <p data-i18n="heroes.theoryDesc">
+          Compare the brightness spectrum of Western diatonic modes, spin the interactive Circle of Fifths, 
+          explore non-Western microtonal traditions (Chinese Lü, Indian Ragas, Arabic Maqamat), and inspect Euler's 2D Tonnetz lattice.
+        </p>
+      </div>
+
+      <!-- 7 Diatonic Modes Brightness Ladder -->
+      <div id="modeExplorerContainer"></div>
+
+      <!-- Circle of Fifths -->
+      <div id="circleOfFifthsContainer" style="margin-top: 2rem;"></div>
+
+      <!-- World Traditions -->
+      <div id="globalTraditionsContainer" style="margin-top: 2rem;"></div>
+
+      <!-- Euler's Tonnetz -->
+      <div id="tonnetzMatrixContainer" style="margin-top: 2rem;"></div>
+    </section>
+
+    <!-- ==================== TAB 4: RHYTHM & GROOVES ==================== -->
+    <section class="tab-section" id="tab-rhythm">
+      <div class="tab-hero">
+        <h2 data-i18n="heroes.rhythmTitle">Rhythm, Polyrhythm & Euclidean Geometry</h2>
+        <p data-i18n="heroes.rhythmDesc">
+          Rhythm is time sculpted by geometry. Discover how Euclid's 2,300-year-old GCD algorithm naturally generates world rhythms, 
+          witness synchronized celestial polyrhythm orbits, and adjust the microtiming swing slider.
+        </p>
+      </div>
+
+      <!-- Euclidean Rhythm Machine -->
+      <div id="euclideanContainer"></div>
+
+      <!-- Polyrhythm Orbitals -->
+      <div id="polyrhythmContainer" style="margin-top: 2rem;"></div>
+
+      <!-- World Grooves & Swing -->
+      <div id="worldGroovesContainer" style="margin-top: 2rem;"></div>
+    </section>
+
+    <!-- ==================== TAB 5: TIMBRE & SOUND ==================== -->
+    <section class="tab-section" id="tab-timbre">
+      <div class="tab-hero">
+        <h2 data-i18n="heroes.timbreTitle">Timbre, Acoustic Modeling & Harmonics</h2>
+        <p data-i18n="heroes.timbreDesc">
+          Why do a violin, a piano, and a flute playing the exact same note sound completely different? 
+          Shape custom waveforms with the 16-drawbar Fourier additive synthesizer and test your ears with the blind instrument experiment.
+        </p>
+      </div>
+
+      <!-- Additive Fourier Synthesizer -->
+      <div id="fourierLabContainer"></div>
+
+      <!-- ADSR & Blind Instrument Experiment -->
+      <div id="adsrLabContainer" style="margin-top: 2rem;"></div>
+    </section>
+
+  </main>
+
+  <!-- Help & Field Guide Modal -->
+  <div class="modal-overlay" id="helpModal">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3>📖 <span data-i18n="app.fieldGuideTitle">Harmonix Lab Field Guide</span></h3>
+        <button class="btn-close" id="btnCloseHelp">&times;</button>
+      </div>
+      <div class="modal-body" style="font-size: 0.95rem; color: var(--text-muted); line-height: 1.6;">
+        <p style="margin-bottom: 1rem;" data-i18n="app.fieldGuideP1">
+          Welcome to <strong>Harmonix Lab</strong>! This platform was built from first physical and mathematical principles to make music theory deeply intuitive through interactive play.
+        </p>
+        <ul style="padding-left: 1.25rem; margin-bottom: 1.25rem; display: flex; flex-direction: column; gap: 0.5rem;">
+          <li data-i18n="app.fieldGuideLi1"><strong>Zero Audio Samples</strong>: All instruments (guzheng, flute, violin, rhodes, analog synths, and drums) are synthesized in real-time in pure code using the Web Audio API and Karplus-Strong physical modeling!</li>
+          <li data-i18n="app.fieldGuideLi2"><strong>The Chameleon Jukebox</strong>: Switch genres in the middle of playback to see how melody, scales, and groove interact.</li>
+          <li data-i18n="app.fieldGuideLi3"><strong>Tap Hero Game</strong>: Use keys <code>A</code> and <code>L</code> (or click the pads) to train your brain on polyrhythms.</li>
+          <li data-i18n="app.fieldGuideLi4"><strong>Interactive Physics</strong>: Drag sliders to see standing wave nodes, constructive wave interference, and beating frequencies in real time.</li>
+        </ul>
+        <p data-i18n="app.fieldGuideP2">
+          Ready to explore? Turn up your volume, tap any button, and dive in!
+        </p>
+      </div>
+    </div>
+  </div>
+
+  <!-- Application Bootstrap Entrypoint -->
+  <script type="module" src="./js/app.js"></script>
+</body>
+</html>

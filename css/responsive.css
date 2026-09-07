@@ -1,0 +1,59 @@
+/**
+ * responsive.css
+ * Fluid media queries and breakpoints for mobile, tablet, and widescreen devices.
+ */
+
+@media (max-width: 1024px) {
+  .app-header {
+    padding: 0.75rem 1rem;
+    flex-wrap: wrap;
+  }
+
+  .nav-tabs {
+    order: 3;
+    width: 100%;
+    justify-content: center;
+    margin-top: 0.5rem;
+    overflow-x: auto;
+  }
+
+  .lab-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 640px) {
+  .app-main {
+    padding: 1rem;
+  }
+
+  .nav-tab-btn {
+    padding: 0.4rem 0.75rem;
+    font-size: 0.8rem;
+  }
+
+  .brand-title {
+    font-size: 1.1rem;
+  }
+
+  .hud-oscilloscope {
+    display: none;
+  }
+
+  .dual-tap-pads {
+    grid-template-columns: 1fr;
+    gap: 0.75rem;
+  }
+
+  .answers-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .key-summary-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .panel {
+    padding: 1.25rem;
+  }
+}
