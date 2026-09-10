@@ -310,6 +310,174 @@
 }
 
 
+/* Unified Arcade Console Styles */
+.arcade-cabinet {
+  max-width: 780px;
+  margin: 0 auto;
+  position: relative;
+  overflow: hidden;
+  border-radius: var(--radius-xl, 16px);
+  border: 1px solid rgba(0, 242, 254, 0.25);
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.5), 0 0 30px rgba(0, 242, 254, 0.08);
+}
+
+.arcade-hud {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  gap: 1rem;
+  align-items: center;
+  background: rgba(10, 15, 30, 0.75);
+  border-bottom: 1px solid var(--border-subtle);
+  padding: 0.85rem 1.25rem;
+  border-radius: var(--radius-xl, 16px) var(--radius-xl, 16px) 0 0;
+  flex-wrap: wrap;
+}
+
+.arcade-hud-stats {
+  display: flex;
+  gap: 1.5rem;
+  align-items: center;
+  justify-content: center;
+  flex-wrap: wrap;
+}
+
+.hud-stat-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  line-height: 1.2;
+}
+
+.hud-stat-label {
+  font-size: 0.68rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--text-muted);
+  font-weight: 700;
+}
+
+.hud-stat-value {
+  font-size: 1.35rem;
+  font-weight: 800;
+  font-family: var(--font-mono);
+  color: #ffffff;
+}
+
+.combo-fire {
+  color: #f59e0b !important;
+  text-shadow: 0 0 12px rgba(245, 158, 11, 0.8), 0 0 25px rgba(239, 68, 68, 0.6);
+  animation: fireFlicker 0.4s infinite alternate;
+}
+
+@keyframes fireFlicker {
+  0% { transform: scale(1); }
+  100% { transform: scale(1.08); }
+}
+
+/* Stage Stepper Progress Bar */
+.stage-stepper-container {
+  padding: 0.75rem 1.25rem;
+  background: rgba(15, 23, 42, 0.5);
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+.stage-stepper-track {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 0.5rem;
+}
+
+.stage-step-card {
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-sm, 6px);
+  padding: 0.4rem 0.6rem;
+  text-align: center;
+  position: relative;
+  overflow: hidden;
+  transition: all 0.3s ease;
+}
+
+.stage-step-card.active {
+  border-color: var(--accent-cyan);
+  background: rgba(0, 242, 254, 0.08);
+  box-shadow: 0 0 12px rgba(0, 242, 254, 0.2);
+}
+
+.stage-step-card.cleared {
+  border-color: #10b981;
+  background: rgba(16, 185, 129, 0.08);
+}
+
+.stage-step-card.cleared::after {
+  content: '✓';
+  position: absolute;
+  top: 2px;
+  right: 6px;
+  font-size: 0.7rem;
+  color: #10b981;
+  font-weight: 900;
+}
+
+.step-card-num {
+  font-size: 0.65rem;
+  text-transform: uppercase;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  color: var(--text-muted);
+}
+
+.stage-step-card.active .step-card-num {
+  color: var(--accent-cyan);
+}
+
+.step-card-title {
+  font-size: 0.76rem;
+  font-weight: 700;
+  color: var(--text-main);
+  margin-top: 2px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.stage-progress-fill {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  height: 3px;
+  background: linear-gradient(90deg, var(--accent-cyan), var(--accent-violet, #a855f7));
+  transition: width 0.2s ease;
+}
+
+.stage-objective-hint {
+  font-size: 0.8rem;
+  color: var(--text-muted);
+  display: flex;
+  justify-content: space-between;
+  margin-top: 0.45rem;
+  align-items: center;
+}
+
+.stage-objective-counter {
+  font-family: var(--font-mono);
+  font-weight: 700;
+  color: var(--accent-cyan);
+}
+
+/* Floating screen shake */
+.canvas-shake {
+  animation: screenVibrate 0.15s infinite;
+}
+
+@keyframes screenVibrate {
+  0% { transform: translate(0, 0); }
+  25% { transform: translate(-3px, 2px); }
+  50% { transform: translate(3px, -2px); }
+  75% { transform: translate(-2px, -3px); }
+  100% { transform: translate(2px, 3px); }
+}
+
 .game-stats-box {
   display: grid;
   grid-template-columns: 1fr 1fr;
