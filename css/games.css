@@ -312,8 +312,7 @@
 
 /* Unified Arcade Console Styles */
 .arcade-cabinet {
-  max-width: 780px;
-  margin: 0 auto;
+  width: 100%;
   position: relative;
   overflow: hidden;
   border-radius: var(--radius-xl, 16px);
@@ -476,6 +475,112 @@
   50% { transform: translate(3px, -2px); }
   75% { transform: translate(-2px, -3px); }
   100% { transform: translate(2px, 3px); }
+}
+
+/* Polyrhythm Tap Hero Countdown & Rhythmic Example Overlay */
+.countdown-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(8, 12, 24, 0.88);
+  backdrop-filter: blur(8px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 25;
+  border-radius: inherit;
+  animation: overlayFadeIn 0.2s ease-out;
+}
+
+@keyframes overlayFadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+.countdown-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  padding: 1.5rem 2rem;
+  background: rgba(15, 23, 42, 0.95);
+  border: 1px solid rgba(0, 242, 254, 0.4);
+  border-radius: var(--radius-lg, 12px);
+  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.7), 0 0 30px rgba(0, 242, 254, 0.18);
+  max-width: 540px;
+  width: 90%;
+}
+
+.countdown-badges {
+  display: flex;
+  gap: 0.6rem;
+  align-items: center;
+  margin-bottom: 0.75rem;
+  flex-wrap: wrap;
+  justify-content: center;
+}
+
+.countdown-hint-text {
+  font-size: 0.92rem;
+  color: var(--text-main, #ffffff);
+  font-weight: 600;
+  line-height: 1.45;
+  margin-bottom: 1rem;
+  min-height: 2.5rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.countdown-demo-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.82rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--accent-cyan, #00f2fe);
+  padding: 0.35rem 0.85rem;
+  background: rgba(0, 242, 254, 0.12);
+  border: 1px solid rgba(0, 242, 254, 0.35);
+  border-radius: 20px;
+  margin-bottom: 0.85rem;
+  transition: all 0.25s ease;
+}
+
+.countdown-demo-status.ready {
+  color: #f59e0b;
+  background: rgba(245, 158, 11, 0.15);
+  border-color: rgba(245, 158, 11, 0.45);
+}
+
+.countdown-big-num {
+  font-size: 3.6rem;
+  font-weight: 900;
+  font-family: var(--font-mono, monospace);
+  line-height: 1;
+  color: #ffffff;
+  min-height: 4.2rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-shadow: 0 0 20px var(--accent-cyan, #00f2fe), 0 0 40px var(--accent-cyan, #00f2fe);
+  animation: countdownPop 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+
+.countdown-big-num.go {
+  color: #10b981;
+  text-shadow: 0 0 25px #10b981, 0 0 50px rgba(16, 185, 129, 0.8);
+  font-size: 4rem;
+}
+
+@keyframes countdownPop {
+  0% { transform: scale(0.6); opacity: 0; }
+  60% { transform: scale(1.15); opacity: 1; }
+  100% { transform: scale(1); opacity: 1; }
 }
 
 .game-stats-box {

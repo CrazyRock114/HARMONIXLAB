@@ -26,6 +26,8 @@ export class PolyrhythmTap {
     this.bpm = 72;
     this.isPlaying = false;
     this.isVictory = false;
+    this.isCountingDown = false;
+    this.countdownTimers = [];
 
     // Performance Stats
     this.score = 0;
@@ -36,8 +38,14 @@ export class PolyrhythmTap {
     this.totalGoods = 0;
     this.totalMisses = 0;
 
-    // Sequential Progression State
-    // 1: Stage 1A (Right hand), 2: Stage 1B (Left hand), 3: Stage 2 (Both hands), 4: Stage 3 (Ghost), 5: Stage 4 (Speed)
+    // Sequential Progression State:
+    // 1: Stage 1A (Right hand solo, 8 hits @ 72 BPM)
+    // 2: Stage 1B (Left hand solo, 8 hits @ 72 BPM)
+    // 3: Stage 2 (Dual hands coordination, 16 hits @ 72 BPM)
+    // 4: Stage 3 (Ghost pulse internal mental counting, 32 hits @ 72 BPM - doubled duration!)
+    // 5: Stage 4A (Speed Tier 1: 90 BPM, 12 hits)
+    // 6: Stage 4B (Speed Tier 2: 120 BPM, 12 hits)
+    // 7: Stage 4C (Speed Tier 3: 144 BPM, 12 hits) -> Victory
     this.stageIndex = 1;
     this.stageHitsCurrent = 0;
     this.stageHitsNeeded = 8;
@@ -65,6 +73,90 @@ export class PolyrhythmTap {
     this.updateStatsUI();
     this.updatePadsState();
     this.render();
+  }
+
+  getStageConfig(stageIndex = this.stageIndex) {
+    const configs = {
+      1: {
+        stageIndex: 1,
+        stepCardNum: 1,
+        titleKey: 'games.step1Title',
+        descKey: 'games.stage1Right',
+        hintKey: 'games.hintStage1Right',
+        speedTierKey: null,
+        bpm: 72,
+        hitsNeeded: 8,
+        hands: 'right'
+      },
+      2: {
+        stageIndex: 2,
+        stepCardNum: 1,
+        titleKey: 'games.step1Title',
+        descKey: 'games.stage1Left',
+        hintKey: 'games.hintStage1Left',
+        speedTierKey: null,
+        bpm: 72,
+        hitsNeeded: 8,
+        hands: 'left'
+      },
+      3: {
+        stageIndex: 3,
+        stepCardNum: 2,
+        titleKey: 'games.step2Title',
+        descKey: 'games.stage2',
+        hintKey: 'games.hintStage2',
+        speedTierKey: null,
+        bpm: 72,
+        hitsNeeded: 16,
+        hands: 'both'
+      },
+      4: {
+        stageIndex: 4,
+        stepCardNum: 3,
+        titleKey: 'games.step3Title',
+        descKey: 'games.stage3',
+        hintKey: 'games.hintStage3',
+        speedTierKey: null,
+        bpm: 72,
+        hitsNeeded: 32, // Doubled duration from 16 to 32 hits!
+        hands: 'both',
+        ghost: true
+      },
+      5: {
+        stageIndex: 5,
+        stepCardNum: 4,
+        titleKey: 'games.step4Title',
+        descKey: 'games.speedTier1',
+        hintKey: 'games.hintStage4A',
+        speedTierKey: 'games.speedTier1',
+        bpm: 90,
+        hitsNeeded: 12,
+        hands: 'both'
+      },
+      6: {
+        stageIndex: 6,
+        stepCardNum: 4,
+        titleKey: 'games.step4Title',
+        descKey: 'games.speedTier2',
+        hintKey: 'games.hintStage4B',
+        speedTierKey: 'games.speedTier2',
+        bpm: 120,
+        hitsNeeded: 12,
+        hands: 'both'
+      },
+      7: {
+        stageIndex: 7,
+        stepCardNum: 4,
+        titleKey: 'games.step4Title',
+        descKey: 'games.speedTier3',
+        hintKey: 'games.hintStage4C',
+        speedTierKey: 'games.speedTier3',
+        bpm: 144,
+        hitsNeeded: 12,
+        hands: 'both'
+      }
+    };
+    return configs[stageIndex] || configs[1];
   }
 
   initDOM() {
@@ -138,9 +230,23 @@ export class PolyrhythmTap {
           </div>
         </div>
 
-        <!-- Central Falling Lanes Canvas with Particles & Screen Shake -->
+        <!-- Central Falling Lanes Canvas with Particles, Screen Shake & Countdown Overlay -->
         <div class="canvas-wrapper flex-center" style="position: relative; margin: 1rem 0 0.5rem 0;">
-          <canvas id="tapCanvas" width="600" height="290"></canvas>
+          <canvas id="tapCanvas" width="760" height="290"></canvas>
+          <div class="countdown-overlay" id="countdownOverlay" style="display: none;">
+            <div class="countdown-card">
+              <div class="countdown-badges">
+                <span class="badge highlight-cyan" id="cdStageBadge">STAGE 1/4</span>
+                <span class="badge highlight-amber" id="cdBpmBadge">72 BPM</span>
+              </div>
+              <div class="countdown-hint-text" id="cdHintText"></div>
+              <div class="countdown-demo-status" id="cdDemoStatus">
+                <span id="cdDemoIcon">🔊</span>
+                <span id="cdDemoText">${i18n.t('games.rhythmDemo')}</span>
+              </div>
+              <div class="countdown-big-num" id="cdBigNum">3</div>
+            </div>
+          </div>
         </div>
 
         <!-- Integrated Dual Tap Pads -->
@@ -213,15 +319,16 @@ export class PolyrhythmTap {
 
     // Keyboard controls
     this.keyHandler = (e) => {
-      if (!this.isPlaying) return;
+      if (!this.isPlaying || this.isCountingDown) return;
+      const config = this.getStageConfig(this.stageIndex);
       if (e.key === 'a' || e.key === 'A') {
         // In Stage 1A (Right hand solo), Left hand is muted
-        if (this.stageIndex === 1) return;
+        if (config.hands === 'right') return;
         this.handleTap(1);
         this.flashPad('#padLeft');
       } else if (e.key === 'l' || e.key === 'L') {
         // In Stage 1B (Left hand solo), Right hand is muted
-        if (this.stageIndex === 2) return;
+        if (config.hands === 'left') return;
         this.handleTap(2);
         this.flashPad('#padRight');
       }
@@ -233,8 +340,9 @@ export class PolyrhythmTap {
     const pRight = this.container.querySelector('#padRight');
     if (pLeft) {
       pLeft.addEventListener('mousedown', () => {
-        if (this.isPlaying) {
-          if (this.stageIndex === 1) return;
+        if (this.isPlaying && !this.isCountingDown) {
+          const config = this.getStageConfig(this.stageIndex);
+          if (config.hands === 'right') return;
           this.handleTap(1);
         }
         this.flashPad('#padLeft');
@@ -242,8 +350,9 @@ export class PolyrhythmTap {
     }
     if (pRight) {
       pRight.addEventListener('mousedown', () => {
-        if (this.isPlaying) {
-          if (this.stageIndex === 2) return;
+        if (this.isPlaying && !this.isCountingDown) {
+          const config = this.getStageConfig(this.stageIndex);
+          if (config.hands === 'left') return;
           this.handleTap(2);
         }
         this.flashPad('#padRight');
@@ -256,6 +365,147 @@ export class PolyrhythmTap {
     if (!pad) return;
     pad.classList.add('hit');
     setTimeout(() => pad.classList.remove('hit'), 120);
+  }
+
+  clearCountdown() {
+    this.isCountingDown = false;
+    if (this.countdownTimers && this.countdownTimers.length) {
+      this.countdownTimers.forEach(t => clearTimeout(t));
+      this.countdownTimers = [];
+    }
+    const overlay = this.container ? this.container.querySelector('#countdownOverlay') : null;
+    if (overlay) overlay.style.display = 'none';
+  }
+
+  triggerStageCountdown(config) {
+    this.clearCountdown();
+    this.isCountingDown = true;
+    this.bpm = config.bpm;
+    this.cycleDuration = (60 / this.bpm) * 2;
+
+    const overlay = this.container.querySelector('#countdownOverlay');
+    const cdStageBadge = this.container.querySelector('#cdStageBadge');
+    const cdBpmBadge = this.container.querySelector('#cdBpmBadge');
+    const cdHintText = this.container.querySelector('#cdHintText');
+    const cdDemoStatus = this.container.querySelector('#cdDemoStatus');
+    const cdDemoIcon = this.container.querySelector('#cdDemoIcon');
+    const cdDemoText = this.container.querySelector('#cdDemoText');
+    const cdBigNum = this.container.querySelector('#cdBigNum');
+
+    if (overlay) overlay.style.display = 'flex';
+
+    // Badge information
+    const stageNum = config.stepCardNum;
+    const tierText = config.speedTierKey ? ` (${config.bpm} BPM)` : '';
+    if (cdStageBadge) cdStageBadge.textContent = `STAGE ${stageNum}/4${tierText}`;
+    if (cdBpmBadge) cdBpmBadge.textContent = `${config.bpm} BPM`;
+
+    // Educational Hint
+    if (cdHintText) cdHintText.textContent = i18n.t(config.hintKey);
+
+    // Initial state: Rhythmic Demo Phase
+    if (cdDemoStatus) cdDemoStatus.className = 'countdown-demo-status';
+    if (cdDemoIcon) cdDemoIcon.textContent = '🔊';
+    if (cdDemoText) cdDemoText.textContent = i18n.t('games.rhythmDemo');
+    if (cdBigNum) {
+      cdBigNum.textContent = '♪';
+      cdBigNum.className = 'countdown-big-num';
+    }
+
+    this.updatePadsState();
+    this.updateStatsUI();
+
+    // Play 1 measure (cycleDuration) of rhythm demo
+    const measureMs = this.cycleDuration * 1000;
+    const hands = config.hands;
+    const r1 = this.r1;
+    const r2 = this.r2;
+
+    // Schedule demonstration clicks
+    if (hands === 'right' || hands === 'both') {
+      for (let i = 0; i < r2; i++) {
+        const delay = (i / r2) * measureMs;
+        const timerId = setTimeout(() => {
+          if (!this.isPlaying) return;
+          instruments.playDrum('clave', null, 0.95);
+          this.flashPad('#padRight');
+        }, delay);
+        this.countdownTimers.push(timerId);
+      }
+    }
+
+    if (hands === 'left' || hands === 'both') {
+      for (let i = 0; i < r1; i++) {
+        const delay = (i / r1) * measureMs;
+        const timerId = setTimeout(() => {
+          if (!this.isPlaying) return;
+          instruments.playDrum('woodblock', null, 0.95);
+          this.flashPad('#padLeft');
+        }, delay);
+        this.countdownTimers.push(timerId);
+      }
+    }
+
+    // After rhythm example finishes (measureMs + short buffer ~250ms), begin 3-2-1 countdown
+    const cdStartDelay = Math.max(1200, measureMs + 250);
+    const stepDelay = 650; // ms per countdown step
+
+    // Tick 3
+    const t3 = setTimeout(() => {
+      if (!this.isPlaying) return;
+      if (cdDemoStatus) cdDemoStatus.className = 'countdown-demo-status ready';
+      if (cdDemoIcon) cdDemoIcon.textContent = '🎯';
+      if (cdDemoText) cdDemoText.textContent = i18n.t('games.getReady');
+      if (cdBigNum) {
+        cdBigNum.textContent = '3';
+        cdBigNum.className = 'countdown-big-num';
+      }
+      instruments.playTone(880, 0.08, 'sine', null, 0.22);
+    }, cdStartDelay);
+    this.countdownTimers.push(t3);
+
+    // Tick 2
+    const t2 = setTimeout(() => {
+      if (!this.isPlaying) return;
+      if (cdBigNum) {
+        cdBigNum.textContent = '2';
+        cdBigNum.className = 'countdown-big-num';
+      }
+      instruments.playTone(880, 0.08, 'sine', null, 0.22);
+    }, cdStartDelay + stepDelay);
+    this.countdownTimers.push(t2);
+
+    // Tick 1
+    const t1 = setTimeout(() => {
+      if (!this.isPlaying) return;
+      if (cdBigNum) {
+        cdBigNum.textContent = '1';
+        cdBigNum.className = 'countdown-big-num';
+      }
+      instruments.playTone(880, 0.08, 'sine', null, 0.22);
+    }, cdStartDelay + stepDelay * 2);
+    this.countdownTimers.push(t1);
+
+    // GO!
+    const tGo = setTimeout(() => {
+      if (!this.isPlaying) return;
+      if (cdBigNum) {
+        cdBigNum.textContent = i18n.t('games.go');
+        cdBigNum.className = 'countdown-big-num go';
+      }
+      instruments.playTone(1760, 0.18, 'sine', null, 0.3);
+      instruments.playDrum('clave', null, 1.0);
+    }, cdStartDelay + stepDelay * 3);
+    this.countdownTimers.push(tGo);
+
+    // Finish countdown & resume game notes!
+    const tEnd = setTimeout(() => {
+      if (!this.isPlaying) return;
+      if (overlay) overlay.style.display = 'none';
+      this.isCountingDown = false;
+      this.cycleStartTime = performance.now() / 1000;
+    }, cdStartDelay + stepDelay * 3 + 450);
+    this.countdownTimers.push(tEnd);
   }
 
   start() {
@@ -272,8 +522,9 @@ export class PolyrhythmTap {
     // Reset progression
     this.stageIndex = 1;
     this.stageHitsCurrent = 0;
-    this.stageHitsNeeded = 8;
-    this.bpm = this.baseBpm;
+    const config = this.getStageConfig(1);
+    this.stageHitsNeeded = config.hitsNeeded;
+    this.bpm = config.bpm;
     this.cycleDuration = (60 / this.bpm) * 2;
     this.lastCycleIndex = -1;
 
@@ -283,9 +534,6 @@ export class PolyrhythmTap {
     this.shakeDuration = 0;
     this.redFlashAlpha = 0;
 
-    this.cycleStartTime = performance.now() / 1000;
-    this.triggerBanner(i18n.t('games.stage1Right'), 'Master Right Hand (Key L) steady pulse');
-
     const startBtn = this.container.querySelector('#btnStartGame');
     if (startBtn) {
       startBtn.textContent = `⏹ ${i18n.t('games.stopGame')}`;
@@ -294,13 +542,14 @@ export class PolyrhythmTap {
       startBtn.classList.add('btn-danger');
     }
 
-    this.updateStatsUI();
-    this.updatePadsState();
+    // Launch initial countdown & rhythmic example
+    this.triggerStageCountdown(config);
     this.gameLoop();
   }
 
   stop() {
     this.isPlaying = false;
+    this.clearCountdown();
     if (this.animId && typeof cancelAnimationFrame === 'function') cancelAnimationFrame(this.animId);
 
     const startBtn = this.container.querySelector('#btnStartGame');
@@ -323,31 +572,13 @@ export class PolyrhythmTap {
 
   advanceStage() {
     this.stageHitsCurrent = 0;
+    const nextIndex = this.stageIndex + 1;
 
-    if (this.stageIndex === 1) {
-      // 1A (Right) -> 1B (Left)
-      this.stageIndex = 2;
-      this.stageHitsNeeded = 8;
-      this.triggerBanner(i18n.t('games.stageClear'), i18n.t('games.stage1Left'));
-    } else if (this.stageIndex === 2) {
-      // 1B (Left) -> Stage 2 (Both Hands)
-      this.stageIndex = 3;
-      this.stageHitsNeeded = 16;
-      this.triggerBanner(i18n.t('games.stageClear'), i18n.t('games.stage2'));
-    } else if (this.stageIndex === 3) {
-      // Stage 2 (Both) -> Stage 3 (Ghost Pulse)
-      this.stageIndex = 4;
-      this.stageHitsNeeded = 16;
-      this.triggerBanner(i18n.t('games.stageClear'), i18n.t('games.stage3'));
-    } else if (this.stageIndex === 4) {
-      // Stage 3 (Ghost) -> Stage 4 (Speed Hyperdrive)
-      this.stageIndex = 5;
-      this.stageHitsNeeded = 20;
-      this.triggerBanner(i18n.t('games.stageClear'), i18n.t('games.stage4'));
-    } else if (this.stageIndex === 5) {
-      // Completed Stage 4 -> VICTORY!
+    if (nextIndex > 7) {
+      // Completed Stage 7 (4C: 144 BPM) -> VICTORY!
       this.isVictory = true;
       this.isPlaying = false;
+      this.clearCountdown();
       if (this.animId && typeof cancelAnimationFrame === 'function') cancelAnimationFrame(this.animId);
       this.triggerBanner(i18n.t('games.victory'), i18n.t('games.finalRank'));
 
@@ -358,10 +589,21 @@ export class PolyrhythmTap {
         startBtn.classList.remove('btn-danger');
         startBtn.classList.add('btn-primary');
       }
+
+      this.updatePadsState();
+      this.updateStatsUI();
+      return;
     }
 
-    this.updatePadsState();
-    this.updateStatsUI();
+    this.stageIndex = nextIndex;
+    const config = this.getStageConfig(this.stageIndex);
+    this.stageHitsNeeded = config.hitsNeeded;
+
+    // Splash banner announcement
+    this.triggerBanner(i18n.t('games.stageClear'), i18n.t(config.descKey));
+
+    // Trigger rhythmic demo & 3-2-1 countdown for new stage/speed
+    this.triggerStageCountdown(config);
   }
 
   triggerBanner(title, sub) {
@@ -371,6 +613,7 @@ export class PolyrhythmTap {
   }
 
   handleTap(trackNum) {
+    if (this.isCountingDown) return;
     const now = performance.now() / 1000;
     const elapsed = (now - this.cycleStartTime) % this.cycleDuration;
     const progress = elapsed / this.cycleDuration;
@@ -387,7 +630,7 @@ export class PolyrhythmTap {
       if (diffSec < minDiff) minDiff = diffSec;
     }
 
-    const width = this.canvas ? this.canvas.width : 600;
+    const width = this.canvas ? this.canvas.width : 760;
     const height = this.canvas ? this.canvas.height : 290;
     const laneWidth = 140;
     const hitX = trackNum === 1 ? (width / 2 - laneWidth + 65) : (width / 2 + 10 + 65);
@@ -500,13 +743,15 @@ export class PolyrhythmTap {
     const pRightLabel = this.container.querySelector('#padRightLabel');
     if (!pLeft || !pRight) return;
 
-    if (this.stageIndex === 1) {
+    const config = this.getStageConfig(this.stageIndex);
+
+    if (config.hands === 'right') {
       // Stage 1A: Right Hand Solo (Left is Muted)
       pLeft.classList.add('muted');
       pRight.classList.remove('muted');
       if (pLeftLabel) pLeftLabel.innerHTML = `<span data-i18n="games.leftTrack">${i18n.t('games.leftTrack')}</span> [${i18n.t('games.step1Muted')}]`;
       if (pRightLabel) pRightLabel.innerHTML = `<span data-i18n="games.rightTrack">${i18n.t('games.rightTrack')}</span> (${this.r2})`;
-    } else if (this.stageIndex === 2) {
+    } else if (config.hands === 'left') {
       // Stage 1B: Left Hand Solo (Right is Muted)
       pRight.classList.add('muted');
       pLeft.classList.remove('muted');
@@ -537,9 +782,17 @@ export class PolyrhythmTap {
     if (mDisplay) mDisplay.textContent = `${this.maxCombo}x`;
     if (bpmDisplay) bpmDisplay.textContent = `${this.bpm} BPM`;
 
-    // Stage Badge & Step Cards Update
-    const currentStepNum = this.stageIndex === 1 || this.stageIndex === 2 ? 1 : (this.stageIndex - 1);
-    if (sBadge) sBadge.textContent = `STAGE ${currentStepNum}/4`;
+    const config = this.getStageConfig(this.stageIndex);
+    const stepNum = config.stepCardNum;
+
+    // Stage Badge
+    if (sBadge) {
+      if (config.speedTierKey) {
+        sBadge.textContent = `STAGE 4/4 (${this.bpm} BPM)`;
+      } else {
+        sBadge.textContent = `STAGE ${stepNum}/4`;
+      }
+    }
 
     // Update 4 Stage Step Cards
     for (let i = 1; i <= 4; i++) {
@@ -547,12 +800,24 @@ export class PolyrhythmTap {
       const fill = this.container.querySelector(`#fillStep${i}`);
       if (!card || !fill) continue;
 
-      if (i < currentStepNum) {
+      if (i < stepNum) {
         card.className = 'stage-step-card cleared';
         fill.style.width = '100%';
-      } else if (i === currentStepNum) {
+      } else if (i === stepNum) {
         card.className = 'stage-step-card active';
-        const pct = Math.min(100, Math.round((this.stageHitsCurrent / this.stageHitsNeeded) * 100));
+        let pct = 0;
+        if (i === 1) {
+          // Stage 1: 1A (8 hits) + 1B (8 hits) = 16 hits total
+          const hitsDone = this.stageIndex === 1 ? this.stageHitsCurrent : (8 + this.stageHitsCurrent);
+          pct = Math.min(100, Math.round((hitsDone / 16) * 100));
+        } else if (i === 4) {
+          // Stage 4: 4A (12 hits) + 4B (12 hits) + 4C (12 hits) = 36 hits total
+          const tierOffset = this.stageIndex === 5 ? 0 : (this.stageIndex === 6 ? 12 : 24);
+          pct = Math.min(100, Math.round(((tierOffset + this.stageHitsCurrent) / 36) * 100));
+        } else {
+          // Stage 2 (16 hits) or Stage 3 (32 hits)
+          pct = Math.min(100, Math.round((this.stageHitsCurrent / this.stageHitsNeeded) * 100));
+        }
         fill.style.width = `${pct}%`;
       } else {
         card.className = 'stage-step-card';
@@ -565,11 +830,7 @@ export class PolyrhythmTap {
     const objCount = this.container.querySelector('#stageObjectiveCount');
 
     if (objDesc) {
-      if (this.stageIndex === 1) objDesc.textContent = i18n.t('games.stage1Right');
-      else if (this.stageIndex === 2) objDesc.textContent = i18n.t('games.stage1Left');
-      else if (this.stageIndex === 3) objDesc.textContent = i18n.t('games.stage2');
-      else if (this.stageIndex === 4) objDesc.textContent = i18n.t('games.stage3');
-      else if (this.stageIndex === 5) objDesc.textContent = i18n.t('games.stage4');
+      objDesc.textContent = i18n.t(config.descKey);
     }
 
     if (objCount) {
@@ -595,6 +856,15 @@ export class PolyrhythmTap {
     const judgment = this.container.querySelector('#judgmentLabel');
     if (judgment && !this.isPlaying && !this.isVictory) {
       judgment.textContent = i18n.t('games.pressStart');
+    }
+
+    // Update countdown overlay if visible
+    if (this.isCountingDown) {
+      const config = this.getStageConfig(this.stageIndex);
+      const cdHintText = this.container.querySelector('#cdHintText');
+      if (cdHintText) cdHintText.textContent = i18n.t(config.hintKey);
+      const cdDemoText = this.container.querySelector('#cdDemoText');
+      if (cdDemoText) cdDemoText.textContent = i18n.t('games.rhythmDemo');
     }
 
     this.updateStatsUI();
@@ -654,42 +924,30 @@ export class PolyrhythmTap {
     const elapsed = this.isPlaying ? ((now - this.cycleStartTime) % this.cycleDuration) : 0;
     const progress = elapsed / this.cycleDuration;
 
-    // Dynamic Accelerando in Stage 4 (Speed Hyperdrive)
-    if (this.stageIndex === 5 && this.isPlaying) {
-      const currentCycle = Math.floor((now - this.cycleStartTime) / this.cycleDuration);
-      if (currentCycle > this.lastCycleIndex) {
-        this.lastCycleIndex = currentCycle;
-        if (this.bpm < 135) {
-          this.bpm += 2;
-          this.cycleDuration = (60 / this.bpm) * 2;
-          const bpmDisplay = this.container.querySelector('#gameBpmVal');
-          if (bpmDisplay) bpmDisplay.textContent = `${this.bpm} BPM`;
-        }
-      }
-    }
-
     // Alpha modulation for lanes
     let r1Alpha = 1.0;
     let r2Alpha = 1.0;
 
-    if (this.stageIndex === 1) {
+    const config = this.getStageConfig(this.stageIndex);
+
+    if (config.hands === 'right') {
       // Stage 1A: Right Hand Solo (Left is Muted)
       r1Alpha = 0.08;
       r2Alpha = 1.0;
-    } else if (this.stageIndex === 2) {
+    } else if (config.hands === 'left') {
       // Stage 1B: Left Hand Solo (Right is Muted)
       r1Alpha = 1.0;
       r2Alpha = 0.08;
-    } else if (this.stageIndex === 4) {
-      // Stage 3: Ghost Pulse (Fade out and reappear)
-      if (this.isPlaying) {
+    } else if (config.ghost) {
+      // Stage 3: Ghost Pulse (Doubled duration, internal mental counting)
+      if (this.isPlaying && !this.isCountingDown) {
         const t = (now - this.cycleStartTime) / this.cycleDuration;
-        const phase = (t % 6.0 + 6.0) % 6.0;
+        const phase = (t % 8.0 + 8.0) % 8.0;
         let alpha = 1.0;
         if (phase < 2.0) alpha = 1.0;
-        else if (phase < 2.8) alpha = 1.0 - (phase - 2.0) / 0.8;
-        else if (phase < 4.8) alpha = 0.0; // Completely invisible ghost pulse!
-        else if (phase < 5.8) alpha = (phase - 4.8) / 1.0;
+        else if (phase < 3.2) alpha = 1.0 - (phase - 2.0) / 1.2;
+        else if (phase < 6.5) alpha = 0.0; // Completely invisible ghost pulse!
+        else if (phase < 7.8) alpha = (phase - 6.5) / 1.3;
         else alpha = 1.0;
 
         r1Alpha = alpha;
