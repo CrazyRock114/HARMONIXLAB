@@ -302,7 +302,7 @@ export const ScalesData = {
       id: 'cyberpunk',
       name: 'Cyberpunk / Synthwave',
       icon: '⚡',
-      bpm: 120,
+      bpm: 130,
       meter: '4/4',
       scaleId: 'phrygian',
       instruments: {
