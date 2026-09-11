@@ -21,7 +21,7 @@ class I18nManager {
       'ja': { name: '日本語', flag: '🇯🇵', dict: ja },
       'ko': { name: '한국어', flag: '🇰🇷', dict: ko },
       'zh-CN': { name: '简体中文', flag: '🇨🇳', dict: zhCN },
-      'zh-TW': { name: '繁體中文', flag: '🇹🇼', dict: zhTW }
+      'zh-TW': { name: '繁體中文', flag: '🇭🇰', dict: zhTW }
     };
 
     this.listeners = [];
