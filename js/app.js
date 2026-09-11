@@ -33,6 +33,9 @@ import { PolyrhythmTap } from './games/PolyrhythmTap.js';
 import { EarHeroQuest } from './games/EarHeroQuest.js';
 import { MelodyMatrix } from './games/MelodyMatrix.js';
 
+// Mobile-Native Layout Controller
+import { MobileLayoutManager } from './mobile/MobileLayoutManager.js';
+
 class HarmonixApp {
   constructor() {
     this.instances = {};
@@ -44,6 +47,11 @@ class HarmonixApp {
     this.initGlobalControls();
     this.initLiveHud();
     this.switchTab('games');
+
+    // Initialize Mobile-Native Focused Cockpit Manager
+    this.mobileLayoutManager = new MobileLayoutManager();
+    const isMobile = document.documentElement.getAttribute('data-is-mobile') === 'true';
+    this.mobileLayoutManager.updateMobileState(isMobile);
   }
 
   initViewMode() {
@@ -84,6 +92,10 @@ class HarmonixApp {
       
       if (select && select.value !== this.viewMode) {
         select.value = this.viewMode;
+      }
+
+      if (this.mobileLayoutManager) {
+        this.mobileLayoutManager.updateMobileState(effectiveMobile);
       }
 
       if (typeof window !== 'undefined' && typeof window.dispatchEvent === 'function') {
@@ -187,6 +199,10 @@ class HarmonixApp {
 
     // Lazy load/mount components for this tab
     this.mountTabComponents(tabId);
+
+    if (this.mobileLayoutManager) {
+      this.mobileLayoutManager.onTabChange(tabId);
+    }
   }
 
   mountTabComponents(tabId) {
@@ -225,6 +241,11 @@ class HarmonixApp {
 
     // Apply translations to freshly mounted components
     i18n.applyDomTranslations();
+
+    if (this.mobileLayoutManager) {
+      this.mobileLayoutManager.setupDualPanelSwitchers();
+      this.mobileLayoutManager.setupTheoryAccordions();
+    }
   }
 
   initGlobalControls() {
