@@ -21,7 +21,10 @@ export default {
     "cents": "音分",
     "score": "得分",
     "streak": "連擊",
-    "pts": "分"
+    "pts": "分",
+    "viewModeAuto": "自動檢測",
+    "viewModeMobile": "小屏手機端",
+    "viewModeDesktop": "大屏桌面端"
   },
   "nav": {
     "games": "迷你遊戲",

@@ -21,7 +21,10 @@ export default {
     "cents": "센트",
     "score": "점수",
     "streak": "연속",
-    "pts": "점"
+    "pts": "점",
+    "viewModeAuto": "자동 감지",
+    "viewModeMobile": "모바일 보기",
+    "viewModeDesktop": "데스크톱 보기"
   },
   "nav": {
     "games": "미니 게임",

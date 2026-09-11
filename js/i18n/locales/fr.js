@@ -21,7 +21,10 @@ export default {
     "cents": "cents",
     "score": "Score",
     "streak": "Série",
-    "pts": "PTS"
+    "pts": "PTS",
+    "viewModeAuto": "Automatique",
+    "viewModeMobile": "Mode Mobile",
+    "viewModeDesktop": "Mode Bureau"
   },
   "nav": {
     "games": "Mini-Jeux",

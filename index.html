@@ -6,6 +6,19 @@
   <title>Harmonix Lab | Interactive Music Theory, Physics & Global Modes</title>
   <meta name="description" content="An interactive explorable web lab for learning music theory through the physics of sound waves, mathematical tuning, global modes, and real-time interactive mini-games.">
 
+  <!-- Device View Mode & Screen Auto-Detection (prevents FOUC) -->
+  <script>
+    (function() {
+      try {
+        var m = localStorage.getItem('harmonix_view_mode') || 'auto';
+        var isSmall = window.innerWidth <= 768;
+        var isMobile = (m === 'mobile') || (m === 'auto' && isSmall);
+        document.documentElement.setAttribute('data-view-mode', m);
+        document.documentElement.setAttribute('data-is-mobile', isMobile ? 'true' : 'false');
+      } catch(e) {}
+    })();
+  </script>
+
   <!-- Core Stylesheets -->
   <link rel="stylesheet" href="./css/main.css">
   <link rel="stylesheet" href="./css/visualizers.css">
@@ -66,6 +79,13 @@
         <option value="ko">🇰🇷 한국어</option>
         <option value="zh-CN">🇨🇳 简体中文</option>
         <option value="zh-TW">🇭🇰 繁體中文</option>
+      </select>
+
+      <!-- Device View Mode Selector (Auto / Mobile / Desktop) -->
+      <select id="viewModeSelect" class="view-mode-select lang-select" aria-label="Device View Mode" title="Switch Device View Mode">
+        <option value="auto">🔄 Auto</option>
+        <option value="mobile">📱 Mobile</option>
+        <option value="desktop">🖥️ Desktop</option>
       </select>
 
       <div class="hud-oscilloscope" title="Real-time Master Oscilloscope">

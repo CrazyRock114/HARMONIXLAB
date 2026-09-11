@@ -21,7 +21,10 @@ export default {
     "cents": "cent",
     "score": "Punteggio",
     "streak": "Striscia",
-    "pts": "PUNTI"
+    "pts": "PUNTI",
+    "viewModeAuto": "Automatico",
+    "viewModeMobile": "Vista Mobile",
+    "viewModeDesktop": "Vista Desktop"
   },
   "nav": {
     "games": "Mini-Giochi",

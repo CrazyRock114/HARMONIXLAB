@@ -21,7 +21,10 @@ export default {
     "cents": "セント",
     "score": "スコア",
     "streak": "連続",
-    "pts": "点"
+    "pts": "点",
+    "viewModeAuto": "自動判定",
+    "viewModeMobile": "モバイル表示",
+    "viewModeDesktop": "デスクトップ表示"
   },
   "nav": {
     "games": "ミニゲーム",

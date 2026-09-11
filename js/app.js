@@ -37,12 +37,92 @@ class HarmonixApp {
   constructor() {
     this.instances = {};
     this.activeTab = 'games'; // Start on the thrilling mini-games section first!
+    this.initViewMode();
     this.initLanguageSelector();
     this.initAudioBanner();
     this.initNavigation();
     this.initGlobalControls();
     this.initLiveHud();
     this.switchTab('games');
+  }
+
+  initViewMode() {
+    const select = document.getElementById('viewModeSelect');
+    
+    // Read saved preference, default to 'auto'
+    let savedMode = 'auto';
+    try {
+      savedMode = localStorage.getItem('harmonix_view_mode') || 'auto';
+    } catch (e) {}
+    this.viewMode = ['auto', 'mobile', 'desktop'].includes(savedMode) ? savedMode : 'auto';
+
+    const updateViewModeLabels = () => {
+      if (!select) return;
+      const opts = select.options;
+      for (let i = 0; i < opts.length; i++) {
+        if (opts[i].value === 'auto') opts[i].textContent = '🔄 ' + i18n.t('app.viewModeAuto');
+        else if (opts[i].value === 'mobile') opts[i].textContent = '📱 ' + i18n.t('app.viewModeMobile');
+        else if (opts[i].value === 'desktop') opts[i].textContent = '🖥️ ' + i18n.t('app.viewModeDesktop');
+      }
+    };
+
+    const applyViewMode = () => {
+      const root = document.documentElement;
+      const isSmallScreen = typeof window !== 'undefined' && window.innerWidth <= 768;
+      let effectiveMobile = false;
+
+      if (this.viewMode === 'mobile') {
+        effectiveMobile = true;
+      } else if (this.viewMode === 'desktop') {
+        effectiveMobile = false;
+      } else {
+        effectiveMobile = isSmallScreen;
+      }
+
+      root.setAttribute('data-view-mode', this.viewMode);
+      root.setAttribute('data-is-mobile', effectiveMobile ? 'true' : 'false');
+      
+      if (select && select.value !== this.viewMode) {
+        select.value = this.viewMode;
+      }
+
+      if (typeof window !== 'undefined' && typeof window.dispatchEvent === 'function') {
+        window.dispatchEvent(new Event('resize'));
+      }
+    };
+
+    if (select) {
+      select.value = this.viewMode;
+      select.addEventListener('change', (e) => {
+        this.viewMode = e.target.value;
+        try {
+          localStorage.setItem('harmonix_view_mode', this.viewMode);
+        } catch (e) {}
+        applyViewMode();
+      });
+    }
+
+    if (typeof window !== 'undefined' && typeof window.matchMedia === 'function') {
+      const mql = window.matchMedia('(max-width: 768px)');
+      const mediaHandler = () => {
+        if (this.viewMode === 'auto') applyViewMode();
+      };
+      if (mql.addEventListener) mql.addEventListener('change', mediaHandler);
+      else if (mql.addListener) mql.addListener(mediaHandler);
+    }
+
+    if (typeof window !== 'undefined') {
+      window.addEventListener('resize', () => {
+        if (this.viewMode === 'auto') applyViewMode();
+      });
+    }
+
+    if (typeof i18n.onLanguageChange === 'function') {
+      this.unsubscribeI18n = i18n.onLanguageChange(() => updateViewModeLabels());
+    }
+
+    updateViewModeLabels();
+    applyViewMode();
   }
 
   initLanguageSelector() {
