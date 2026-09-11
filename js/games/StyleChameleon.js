@@ -103,10 +103,13 @@ export class StyleChameleon {
     const map = {
       classical: 'games.styleClassical',
       jazz: 'games.styleJazz',
+      jazz_bossa: 'games.styleJazz',
       cyberpunk: 'games.styleCyberpunk',
       sizhu: 'games.styleSizhu',
       reggae: 'games.styleReggae',
-      celtic: 'games.styleCeltic'
+      reggae_dub: 'games.styleReggae',
+      celtic: 'games.styleCeltic',
+      celtic_jig: 'games.styleCeltic'
     };
     return i18n.t(map[id] || id);
   }
@@ -115,10 +118,13 @@ export class StyleChameleon {
     const map = {
       classical: 'games.styleClassicalDesc',
       jazz: 'games.styleJazzDesc',
+      jazz_bossa: 'games.styleJazzDesc',
       cyberpunk: 'games.styleCyberpunkDesc',
       sizhu: 'games.styleSizhuDesc',
       reggae: 'games.styleReggaeDesc',
-      celtic: 'games.styleCelticDesc'
+      reggae_dub: 'games.styleReggaeDesc',
+      celtic: 'games.styleCelticDesc',
+      celtic_jig: 'games.styleCelticDesc'
     };
     return i18n.t(map[id] || id);
   }
@@ -243,14 +249,21 @@ export class StyleChameleon {
 
   async start() {
     await instruments.ensureAudio();
+    if (audioEngine.ctx && audioEngine.ctx.state === 'suspended') {
+      try { await audioEngine.ctx.resume(); } catch (e) {}
+    }
     this.isPlaying = true;
     this.currentNoteIndex = 0;
+    if (this.timerId) clearTimeout(this.timerId);
     this.tick();
   }
 
   stop() {
     this.isPlaying = false;
-    if (this.timerId) clearTimeout(this.timerId);
+    if (this.timerId) {
+      clearTimeout(this.timerId);
+      this.timerId = null;
+    }
     this.renderPianoRoll();
   }
 
@@ -298,68 +311,74 @@ export class StyleChameleon {
     const leadFreq = TuningSystems.midiToFreq(leadMidi);
 
     const step16thDuration = (60000 / style.bpm) / 4;
-    const noteDurationMs = note.dur * step16thDuration;
+    const noteDurationMs = Math.max(50, note.dur * step16thDuration);
 
-    // 1. Play Lead Instrument
-    if (!this.mutes.lead) {
-      instruments.playInstrument(style.instruments.lead, leadFreq, (noteDurationMs / 1000) * 0.95, null, 0.4);
-    }
-
-    // 2. Play Bass & Chords
-    if (!this.mutes.bass) {
-      const bassMidi = root - 24 + (adaptedStep % 12);
-      const bassFreq = TuningSystems.midiToFreq(bassMidi);
-      instruments.playInstrument(style.instruments.bass, bassFreq, 0.6, null, 0.45);
-    }
-
-    if (!this.mutes.chords) {
-      // Voicing based on genre
-      let chordIntervals = [0, 4, 7]; // Major triad default
-      if (style.id === 'jazz_bossa') {
-        // Jazz Major 9th or Minor 9th
-        chordIntervals = [0, 4, 7, 11, 14];
-      } else if (style.id === 'sizhu') {
-        chordIntervals = [0, 7, 12]; // Open 5ths / octaves
-      } else if (style.id === 'cyberpunk') {
-        chordIntervals = [0, 3, 7, 10]; // Minor 7th
-      } else if (style.id === 'reggae_dub') {
-        chordIntervals = [0, 4, 7]; // Staccato triad
+    try {
+      // 1. Play Lead Instrument
+      if (!this.mutes.lead) {
+        instruments.playInstrument(style.instruments.lead, leadFreq, (noteDurationMs / 1000) * 0.95, null, 0.4);
       }
 
-      chordIntervals.forEach(ci => {
-        const chordFreq = TuningSystems.midiToFreq(root - 12 + ci);
-        instruments.playInstrument(style.instruments.chords, chordFreq, 0.5, null, 0.22);
-      });
-    }
+      // 2. Play Bass & Chords
+      if (!this.mutes.bass) {
+        const bassMidi = root - 24 + (((adaptedStep % 12) + 12) % 12);
+        const bassFreq = TuningSystems.midiToFreq(bassMidi);
+        instruments.playInstrument(style.instruments.bass, bassFreq, Math.max(0.2, (noteDurationMs / 1000) * 1.1), null, 0.45);
+      }
 
-    // 3. Play Drum Groove per genre
-    if (!this.mutes.drums) {
-      if (style.id === 'jazz_bossa') {
-        instruments.playDrum('clave', null, 0.5);
-        instruments.playDrum('hihat', null, 0.3);
-      } else if (style.id === 'cyberpunk') {
-        instruments.playDrum('kick', null, 0.85);
-        if (this.currentNoteIndex % 2 === 1) instruments.playDrum('snare', null, 0.7);
-        instruments.playDrum('hihat', null, 0.4);
-      } else if (style.id === 'sizhu') {
-        if (this.currentNoteIndex % 4 === 0) instruments.playDrum('woodblock', null, 0.6);
-      } else if (style.id === 'reggae_dub') {
-        // One drop: snare + kick together on 3rd beat
-        if (this.currentNoteIndex % 2 === 1) {
-          instruments.playDrum('snare', null, 0.8);
-          instruments.playDrum('kick', null, 0.7);
+      if (!this.mutes.chords) {
+        // Voicing based on genre
+        let chordIntervals = [0, 4, 7]; // Major triad default
+        if (style.id === 'jazz_bossa') {
+          // Jazz Major 9th or Minor 9th
+          chordIntervals = [0, 4, 7, 11, 14];
+        } else if (style.id === 'sizhu') {
+          chordIntervals = [0, 7, 12]; // Open 5ths / octaves
+        } else if (style.id === 'cyberpunk') {
+          chordIntervals = [0, 3, 7, 10]; // Minor 7th
+        } else if (style.id === 'reggae_dub') {
+          chordIntervals = [0, 4, 7]; // Staccato triad
         }
-        instruments.playDrum('hihat', null, 0.3);
-      } else if (style.id === 'celtic_jig') {
-        instruments.playDrum('bodhran', null, 0.7);
+
+        chordIntervals.forEach(ci => {
+          const chordFreq = TuningSystems.midiToFreq(root - 12 + ci);
+          instruments.playInstrument(style.instruments.chords, chordFreq, Math.max(0.15, (noteDurationMs / 1000) * 0.9), null, 0.22);
+        });
       }
+
+      // 3. Play Drum Groove per genre
+      if (!this.mutes.drums) {
+        if (style.id === 'jazz_bossa') {
+          instruments.playDrum('clave', null, 0.5);
+          instruments.playDrum('hihat', null, 0.3);
+        } else if (style.id === 'cyberpunk') {
+          instruments.playDrum('kick', null, 0.85);
+          if (this.currentNoteIndex % 2 === 1) instruments.playDrum('snare', null, 0.7);
+          instruments.playDrum('hihat', null, 0.4);
+        } else if (style.id === 'sizhu') {
+          if (this.currentNoteIndex % 4 === 0) instruments.playDrum('woodblock', null, 0.6);
+        } else if (style.id === 'reggae_dub') {
+          // One drop: snare + kick together on 3rd beat
+          if (this.currentNoteIndex % 2 === 1) {
+            instruments.playDrum('snare', null, 0.8);
+            instruments.playDrum('kick', null, 0.7);
+          }
+          instruments.playDrum('hihat', null, 0.3);
+        } else if (style.id === 'celtic_jig') {
+          instruments.playDrum('bodhran', null, 0.7);
+        }
+      }
+
+      this.renderPianoRoll();
+    } catch (err) {
+      console.warn('StyleChameleon audio/render glitch:', err);
     }
 
-    this.renderPianoRoll();
-
-    // Advance note index
-    this.currentNoteIndex = (this.currentNoteIndex + 1) % notes.length;
-    this.timerId = setTimeout(() => this.tick(), noteDurationMs);
+    // Always advance note index and schedule next tick so playback never halts!
+    if (this.isPlaying) {
+      this.currentNoteIndex = (this.currentNoteIndex + 1) % notes.length;
+      this.timerId = setTimeout(() => this.tick(), noteDurationMs);
+    }
   }
 
   renderPianoRoll() {

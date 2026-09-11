@@ -734,50 +734,23 @@ html[data-is-mobile="true"] .mobile-panel-switcher,
   }
 }
 
-/* 4.3 Theory Accordion (.mobile-theory-toggle & .theory-callout.mobile-collapsible) */
+/* 4.3 Theory Callout - Compact, readable, always preserved */
 html[data-is-mobile="true"] .mobile-theory-toggle,
 @media (max-width: 768px) {
   html:not([data-view-mode="desktop"]) .mobile-theory-toggle {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    width: 100%;
-    padding: 0.55rem 0.85rem;
-    margin-top: 0.85rem;
-    background: rgba(0, 242, 254, 0.08);
-    border: 1px solid rgba(0, 242, 254, 0.3);
-    border-radius: var(--radius-md);
-    color: var(--accent-cyan);
-    font-size: 0.82rem;
-    font-weight: 600;
-    cursor: pointer;
-    transition: all 0.2s ease;
+    display: none !important;
   }
 
-  html:not([data-view-mode="desktop"]) .mobile-theory-toggle:hover {
-    background: rgba(0, 242, 254, 0.14);
+  html:not([data-view-mode="desktop"]) .theory-callout {
+    display: block !important;
+    margin-top: 0.75rem;
+    padding: 0.75rem 0.85rem;
+    font-size: 0.8rem;
+    line-height: 1.5;
+    background: rgba(0, 242, 254, 0.05);
+    border-left: 3px solid var(--accent-cyan);
+    border-radius: var(--radius-sm);
   }
-
-  html:not([data-view-mode="desktop"]) .mobile-theory-toggle.active {
-    background: rgba(0, 242, 254, 0.2);
-    border-color: var(--accent-cyan);
-    color: #ffffff;
-  }
-
-  html:not([data-view-mode="desktop"]) .theory-callout.mobile-collapsible {
-    display: none;
-    margin-top: 0.5rem;
-    animation: theorySlideDown 0.25s ease-out;
-  }
-
-  html:not([data-view-mode="desktop"]) .theory-callout.mobile-collapsible.mobile-open {
-    display: block;
-  }
-}
-
-@keyframes theorySlideDown {
-  from { opacity: 0; transform: translateY(-8px); }
-  to { opacity: 1; transform: translateY(0); }
 }
 
 /* 4.4 Compact Stage & Canvas heights for Single-Screen Viewing */

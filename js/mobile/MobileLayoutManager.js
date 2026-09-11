@@ -1,16 +1,19 @@
 /**
  * MobileLayoutManager.js
- * Specialized Mobile-Native Focused Cockpit Architecture for Harmonix Lab.
+ * Specialized Mobile-Native Focused Experience for Harmonix Lab.
  *
- * Responsibilities:
- * 1. Sub-Lab Navigator (.mobile-subnav):
- *    On mobile, displays only the active sub-lab per tab, eliminating 4,000px vertical scrolling.
- * 2. Multi-Panel Segmented Switcher (.mobile-panel-switcher):
- *    For dual-panel labs (WaveformLab, AdsrLab), provides a clean segmented toggle between sub-experiments.
- * 3. Theory Accordion (.mobile-theory-card):
- *    Collapses long physical explanations into a 1-tap expandable card, keeping canvas and controls in 1 viewport.
- * 4. Automatic Desktop Restoration:
- *    When switched to Desktop mode or wide screens, immediately restores the full multi-column layout.
+ * Guiding Principles:
+ * 1. ZERO CONTENT LOSS:
+ *    Every single sub-lab, panel, and educational theory section is 100% visible and accessible.
+ *    No container is ever hidden with display: none.
+ * 2. STICKY QUICK-JUMP ANCHOR BAR (.mobile-subnav):
+ *    Provides one-tap instant smooth jump to any experiment within the active tab,
+ *    with automatic active pill highlighting via IntersectionObserver.
+ * 3. COMPACT ERGONOMIC DUAL-PANEL CARDS:
+ *    Dual-panel experiments (Standing Waves & Beats, ADSR & Blind Test) are cleanly stacked,
+ *    with quick anchor switchers to jump between panels.
+ * 4. FULL DESKTOP PRESERVATION:
+ *    Restores full wide layout seamlessly on large screens or when desktop view is forced.
  */
 
 import { i18n } from '../i18n/i18n.js';
@@ -60,6 +63,7 @@ export class MobileLayoutManager {
 
     this.currentTab = 'games';
     this.isMobile = false;
+    this.scrollObservers = [];
 
     this.init();
     if (typeof i18n.onLanguageChange === 'function') {
@@ -71,10 +75,11 @@ export class MobileLayoutManager {
     this.createSubNavbars();
     this.setupDualPanelSwitchers();
     this.setupTheoryAccordions();
+    this.setupScrollSpy();
   }
 
   /**
-   * Builds sticky horizontal subnav pills in each tab section
+   * Builds sticky horizontal quick-jump pill navigation in each tab section
    */
   createSubNavbars() {
     for (const [tabId, conf] of Object.entries(this.tabsConfig)) {
@@ -107,6 +112,7 @@ export class MobileLayoutManager {
         <button class="mobile-subnav-btn ${isActive ? 'active' : ''}" 
                 data-tab="${tabId}" 
                 data-index="${idx}" 
+                data-target="${cId}"
                 data-i18n="${conf.i18nKeys[idx]}">
           ${label}
         </button>
@@ -115,60 +121,101 @@ export class MobileLayoutManager {
 
     const btns = subnav.querySelectorAll('.mobile-subnav-btn');
     btns.forEach(btn => {
-      btn.addEventListener('click', (e) => {
+      btn.addEventListener('click', () => {
         const idx = parseInt(btn.dataset.index, 10);
-        this.selectSubLab(tabId, idx);
+        const targetId = btn.dataset.target;
+        this.jumpToSubLab(tabId, idx, targetId);
       });
     });
   }
 
   /**
-   * Switches active sub-lab in a tab on mobile
+   * Smoothly scrolls directly to the chosen sub-lab without hiding any content
    */
-  selectSubLab(tabId, index) {
+  jumpToSubLab(tabId, index, targetId) {
     const conf = this.tabsConfig[tabId];
-    if (!conf) return;
-    conf.activeIndex = index;
+    if (conf) {
+      conf.activeIndex = index;
+    }
 
     const section = document.getElementById(`tab-${tabId}`);
-    if (!section) return;
-
-    // Update subnav pill active classes
-    const subnav = section.querySelector('.mobile-subnav');
-    if (subnav) {
-      const btns = subnav.querySelectorAll('.mobile-subnav-btn');
-      btns.forEach((b, i) => b.classList.toggle('active', i === index));
-      // Smooth scroll active button into view within the horizontal strip
-      const activeBtn = btns[index];
-      if (activeBtn && typeof activeBtn.scrollIntoView === 'function') {
-        activeBtn.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
+    if (section) {
+      const subnav = section.querySelector('.mobile-subnav');
+      if (subnav) {
+        const btns = subnav.querySelectorAll('.mobile-subnav-btn');
+        btns.forEach((b, i) => b.classList.toggle('active', i === index));
+        const activeBtn = btns[index];
+        if (activeBtn && typeof activeBtn.scrollIntoView === 'function') {
+          activeBtn.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
+        }
       }
     }
 
-    if (this.isMobile) {
-      // Hide all other sub-labs in this tab, show only selected
-      conf.containerIds.forEach((cId, i) => {
-        const el = document.getElementById(cId);
-        if (el) {
-          if (i === index) {
-            el.style.display = 'block';
-            el.classList.add('mobile-active-sublab');
-          } else {
-            el.style.display = 'none';
-            el.classList.remove('mobile-active-sublab');
-          }
-        }
-      });
-
-      // Dispatch resize so canvases redraw with fresh bounding rects
-      if (typeof window !== 'undefined' && typeof window.dispatchEvent === 'function') {
-        setTimeout(() => window.dispatchEvent(new Event('resize')), 50);
+    const targetEl = document.getElementById(targetId);
+    if (targetEl && typeof targetEl.getBoundingClientRect === 'function') {
+      const headerOffset = 115;
+      const rect = targetEl.getBoundingClientRect();
+      const scrollY = (typeof window !== 'undefined' && window.pageYOffset) || (document.documentElement ? document.documentElement.scrollTop : 0) || 0;
+      const offsetTop = rect.top + scrollY - headerOffset;
+      if (typeof window !== 'undefined' && typeof window.scrollTo === 'function') {
+        window.scrollTo({
+          top: Math.max(0, offsetTop),
+          behavior: 'smooth'
+        });
       }
     }
   }
 
   /**
-   * Sets up segmented tabs for dual-panel labs (WaveformLab, AdsrLab)
+   * Sets up IntersectionObserver to synchronize active subnav pill as the user scrolls
+   */
+  setupScrollSpy() {
+    if (typeof window === 'undefined' || !('IntersectionObserver' in window)) return;
+
+    if (this.scrollObservers) {
+      this.scrollObservers.forEach(obs => obs.disconnect());
+    }
+    this.scrollObservers = [];
+
+    for (const [tabId, conf] of Object.entries(this.tabsConfig)) {
+      const observer = new IntersectionObserver((entries) => {
+        const visibleEntries = entries.filter(e => e.isIntersecting);
+        if (visibleEntries.length > 0) {
+          visibleEntries.sort((a, b) => Math.abs(a.boundingClientRect.top) - Math.abs(b.boundingClientRect.top));
+          const topEntry = visibleEntries[0];
+          const matchedIdx = conf.containerIds.indexOf(topEntry.target.id);
+          if (matchedIdx !== -1 && conf.activeIndex !== matchedIdx) {
+            conf.activeIndex = matchedIdx;
+            const section = document.getElementById(`tab-${tabId}`);
+            if (section) {
+              const subnav = section.querySelector('.mobile-subnav');
+              if (subnav) {
+                const btns = subnav.querySelectorAll('.mobile-subnav-btn');
+                btns.forEach((b, i) => b.classList.toggle('active', i === matchedIdx));
+                if (btns[matchedIdx] && typeof btns[matchedIdx].scrollIntoView === 'function') {
+                  btns[matchedIdx].scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
+                }
+              }
+            }
+          }
+        }
+      }, {
+        root: null,
+        rootMargin: '-120px 0px -40% 0px',
+        threshold: [0.1, 0.5]
+      });
+
+      conf.containerIds.forEach(cId => {
+        const el = document.getElementById(cId);
+        if (el) observer.observe(el);
+      });
+
+      this.scrollObservers.push(observer);
+    }
+  }
+
+  /**
+   * Sets up dual-panel jump switchers for WaveformLab & AdsrLab
    */
   setupDualPanelSwitchers() {
     this.dualPanelConfig.forEach(cfg => {
@@ -213,75 +260,49 @@ export class MobileLayoutManager {
       });
     });
 
-    this.applyDualPanelVisibility(cfg, panels);
+    // Ensure BOTH panels are visible!
+    panels.forEach(p => {
+      p.style.display = '';
+      p.classList.remove('mobile-panel-hidden');
+    });
   }
 
   selectDualPanel(cfg, index, panels, switcher) {
     cfg.activePanel = index;
     const btns = switcher.querySelectorAll('.mobile-switcher-btn');
     btns.forEach((b, i) => b.classList.toggle('active', i === index));
-    this.applyDualPanelVisibility(cfg, panels);
+
+    // Smoothly scroll to the target panel
+    const targetPanel = panels[index];
+    if (targetPanel && typeof targetPanel.getBoundingClientRect === 'function') {
+      const headerOffset = 115;
+      const rect = targetPanel.getBoundingClientRect();
+      const scrollY = (typeof window !== 'undefined' && window.pageYOffset) || (document.documentElement ? document.documentElement.scrollTop : 0) || 0;
+      const offsetTop = rect.top + scrollY - headerOffset;
+      if (typeof window !== 'undefined' && typeof window.scrollTo === 'function') {
+        window.scrollTo({
+          top: Math.max(0, offsetTop),
+          behavior: 'smooth'
+        });
+      }
+    }
 
     if (typeof window !== 'undefined' && typeof window.dispatchEvent === 'function') {
       setTimeout(() => window.dispatchEvent(new Event('resize')), 50);
     }
   }
 
-  applyDualPanelVisibility(cfg, panels) {
-    if (!this.isMobile) {
-      // In desktop mode, show both panels
-      panels.forEach(p => {
-        p.style.display = '';
-        p.classList.remove('mobile-panel-hidden');
-      });
-      return;
-    }
-
-    panels.forEach((p, idx) => {
-      if (idx === cfg.activePanel) {
-        p.style.display = 'block';
-        p.classList.remove('mobile-panel-hidden');
-      } else {
-        p.style.display = 'none';
-        p.classList.add('mobile-panel-hidden');
-      }
-    });
-  }
-
   /**
-   * Wraps theory callout cards in a collapsible accordion on mobile
+   * Sets up theory callout cards so all content is preserved
    */
   setupTheoryAccordions() {
     const callouts = document.querySelectorAll('.theory-callout');
     callouts.forEach(callout => {
+      // Ensure theory callouts are always displayed
+      callout.style.display = '';
       if (callout.dataset.hasAccordion === 'true') return;
       callout.dataset.hasAccordion = 'true';
       callout.classList.add('mobile-collapsible');
-
-      const toggleBtn = document.createElement('button');
-      toggleBtn.type = 'button';
-      toggleBtn.className = 'mobile-theory-toggle btn btn-pill btn-sm';
-      toggleBtn.innerHTML = `
-        <span class="theory-toggle-icon">📖</span>
-        <span class="theory-toggle-text" data-i18n="mobile.theoryTitle">${i18n.t('mobile.theoryTitle')}</span>
-        <span class="theory-chevron">▾</span>
-      `;
-
-      toggleBtn.addEventListener('click', () => {
-        const isOpen = callout.classList.toggle('mobile-open');
-        toggleBtn.classList.toggle('active', isOpen);
-        const textSpan = toggleBtn.querySelector('.theory-toggle-text');
-        const chevron = toggleBtn.querySelector('.theory-chevron');
-        if (isOpen) {
-          textSpan.textContent = i18n.t('mobile.hideTheory');
-          chevron.textContent = '▴';
-        } else {
-          textSpan.textContent = i18n.t('mobile.theoryTitle');
-          chevron.textContent = '▾';
-        }
-      });
-
-      callout.parentNode.insertBefore(toggleBtn, callout);
     });
   }
 
@@ -292,8 +313,17 @@ export class MobileLayoutManager {
     this.currentTab = tabId;
     const conf = this.tabsConfig[tabId];
     if (conf) {
-      this.selectSubLab(tabId, conf.activeIndex);
+      const section = document.getElementById(`tab-${tabId}`);
+      if (section) {
+        const subnav = section.querySelector('.mobile-subnav');
+        if (subnav) {
+          const btns = subnav.querySelectorAll('.mobile-subnav-btn');
+          btns.forEach((b, i) => b.classList.toggle('active', i === conf.activeIndex));
+        }
+      }
     }
+    // Refresh scroll spy
+    setTimeout(() => this.setupScrollSpy(), 100);
   }
 
   /**
@@ -302,39 +332,34 @@ export class MobileLayoutManager {
   updateMobileState(isMobile) {
     this.isMobile = !!isMobile;
 
-    // Apply or remove sub-lab visibility filtering
+    // Ensure ALL containers are visible at all times! Zero content loss!
     for (const [tabId, conf] of Object.entries(this.tabsConfig)) {
-      conf.containerIds.forEach((cId, i) => {
+      conf.containerIds.forEach((cId) => {
         const el = document.getElementById(cId);
-        if (!el) return;
-        if (this.isMobile) {
-          el.style.display = (i === conf.activeIndex) ? 'block' : 'none';
-        } else {
+        if (el) {
           el.style.display = '';
+          el.classList.remove('mobile-active-sublab');
         }
       });
     }
 
-    // Apply or remove dual-panel visibility filtering
+    // Ensure all dual-panels are visible
     this.dualPanelConfig.forEach(cfg => {
       const container = document.getElementById(cfg.containerId);
       if (!container) return;
       const grid = container.querySelector('.lab-grid');
       const panels = grid ? grid.querySelectorAll('.panel') : container.querySelectorAll('.panel');
-      this.applyDualPanelVisibility(cfg, panels);
+      panels.forEach(p => {
+        p.style.display = '';
+        p.classList.remove('mobile-panel-hidden');
+      });
     });
 
-    // Reset theory accordion styles
+    // Ensure all theory callouts are visible
     const callouts = document.querySelectorAll('.theory-callout');
     callouts.forEach(c => {
-      if (!this.isMobile) {
-        c.style.display = '';
-      }
+      c.style.display = '';
     });
-
-    if (this.isMobile && this.tabsConfig[this.currentTab]) {
-      this.selectSubLab(this.currentTab, this.tabsConfig[this.currentTab].activeIndex);
-    }
 
     if (typeof window !== 'undefined' && typeof window.dispatchEvent === 'function') {
       setTimeout(() => window.dispatchEvent(new Event('resize')), 50);
@@ -365,20 +390,13 @@ export class MobileLayoutManager {
         this.renderDualPanelSwitcher(switcher, cfg, panels);
       }
     });
-
-    // Update theory toggle buttons
-    const toggles = document.querySelectorAll('.mobile-theory-toggle');
-    toggles.forEach(btn => {
-      const callout = btn.nextElementSibling;
-      const isOpen = callout && callout.classList.contains('mobile-open');
-      const textSpan = btn.querySelector('.theory-toggle-text');
-      if (textSpan) {
-        textSpan.textContent = isOpen ? i18n.t('mobile.hideTheory') : i18n.t('mobile.theoryTitle');
-      }
-    });
   }
 
   destroy() {
+    if (this.scrollObservers) {
+      this.scrollObservers.forEach(obs => obs.disconnect());
+      this.scrollObservers = [];
+    }
     if (this.unsubscribeI18n) {
       this.unsubscribeI18n();
     }
