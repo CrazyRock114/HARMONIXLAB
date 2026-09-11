@@ -103,20 +103,20 @@ export class PolyrhythmOrbital {
 
   bindEvents() {
     const toggleBtn = this.container.querySelector('#btnToggleOrbital');
-    toggleBtn.addEventListener('click', async () => {
-      await audioEngine.init();
-      if (this.isPlaying) {
-        this.stop();
-        toggleBtn.textContent = i18n.t('rhythm.startOrbitals');
-        toggleBtn.setAttribute('data-i18n', 'rhythm.startOrbitals');
-        toggleBtn.classList.remove('btn-danger');
-        toggleBtn.classList.add('btn-primary');
-      } else {
-        this.start();
-        toggleBtn.textContent = i18n.t('rhythm.stopOrbitals');
-        toggleBtn.setAttribute('data-i18n', 'rhythm.stopOrbitals');
-        toggleBtn.classList.remove('btn-primary');
-        toggleBtn.classList.add('btn-danger');
+    let isPending = false;
+    toggleBtn.addEventListener('click', async (e) => {
+      if (e && typeof e.preventDefault === 'function') e.preventDefault();
+      if (isPending) return;
+      isPending = true;
+      try {
+        await audioEngine.init();
+        if (this.isPlaying) {
+          this.stop();
+        } else {
+          await this.start();
+        }
+      } finally {
+        isPending = false;
       }
     });
 
@@ -197,8 +197,28 @@ export class PolyrhythmOrbital {
     }
   }
 
-  start() {
+  updateToggleButton(isPlaying) {
+    const toggleBtn = this.container ? this.container.querySelector('#btnToggleOrbital') : null;
+    if (!toggleBtn) return;
+    if (isPlaying) {
+      toggleBtn.textContent = i18n.t('rhythm.stopOrbitals');
+      toggleBtn.setAttribute('data-i18n', 'rhythm.stopOrbitals');
+      toggleBtn.classList.remove('btn-primary');
+      toggleBtn.classList.add('btn-danger');
+    } else {
+      toggleBtn.textContent = i18n.t('rhythm.startOrbitals');
+      toggleBtn.setAttribute('data-i18n', 'rhythm.startOrbitals');
+      toggleBtn.classList.remove('btn-danger');
+      toggleBtn.classList.add('btn-primary');
+    }
+  }
+
+  async start() {
+    if (this.isPlaying) return;
+    await instruments.ensureAudio();
+    audioEngine.requestPlayback('polyrhythmOrbital', () => this.stop());
     this.isPlaying = true;
+    this.updateToggleButton(true);
     let lastTime = performance.now();
 
     const loop = (currentTime) => {
@@ -243,6 +263,8 @@ export class PolyrhythmOrbital {
   stop() {
     this.isPlaying = false;
     if (this.animId) cancelAnimationFrame(this.animId);
+    audioEngine.releasePlayback('polyrhythmOrbital');
+    this.updateToggleButton(false);
     this.render();
   }
 

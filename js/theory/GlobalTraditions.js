@@ -18,6 +18,7 @@ export class GlobalTraditions {
     this.traditions = ScalesData.worldTraditions;
     this.selected = this.traditions[0]; // Chinese Gong
     this.rootFreq = 261.63; // C4
+    this.activeTimeouts = [];
 
     this.initDOM();
     this.renderTraditionsList();
@@ -222,18 +223,36 @@ export class GlobalTraditions {
     }
   }
 
+  stop() {
+    this.activeTimeouts.forEach(t => clearTimeout(t));
+    this.activeTimeouts = [];
+    audioEngine.releasePlayback('globalTraditions');
+  }
+
   async playScale() {
+    this.stop();
     await instruments.ensureAudio();
+    audioEngine.requestPlayback('globalTraditions', () => this.stop());
+
     const intervals = [...this.selected.intervals, 12];
     intervals.forEach((semi, idx) => {
-      setTimeout(() => {
+      const timer = setTimeout(() => {
         this.playPad(semi);
       }, idx * 220);
+      this.activeTimeouts.push(timer);
     });
+
+    const endTimer = setTimeout(() => {
+      this.stop();
+    }, intervals.length * 220 + 1000);
+    this.activeTimeouts.push(endTimer);
   }
 
   async playMelody() {
+    this.stop();
     await instruments.ensureAudio();
+    audioEngine.requestPlayback('globalTraditions', () => this.stop());
+
     const ints = this.selected.intervals;
     // Characteristic phrasing pattern for this mode
     const phrasing = [
@@ -242,9 +261,15 @@ export class GlobalTraditions {
     ];
 
     phrasing.forEach((semi, idx) => {
-      setTimeout(() => {
+      const timer = setTimeout(() => {
         this.playPad(semi);
       }, idx * 240);
+      this.activeTimeouts.push(timer);
     });
+
+    const endTimer = setTimeout(() => {
+      this.stop();
+    }, phrasing.length * 240 + 1000);
+    this.activeTimeouts.push(endTimer);
   }
 }

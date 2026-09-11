@@ -18,6 +18,7 @@ export class ModeExplorer {
     this.modes = ScalesData.diatonicModes;
     this.selectedMode = this.modes[0]; // Lydian (brightest)
     this.tonicMidi = 60; // C4
+    this.activeTimeouts = [];
 
     this.initDOM();
     this.renderLadder();
@@ -231,21 +232,37 @@ export class ModeExplorer {
     instruments.playPluck(freq, 1.2, null, 0.4);
   }
 
+  stop() {
+    this.activeTimeouts.forEach(t => clearTimeout(t));
+    this.activeTimeouts = [];
+    audioEngine.releasePlayback('modeExplorer');
+  }
+
   async playScale() {
+    this.stop();
     await instruments.ensureAudio();
+    audioEngine.requestPlayback('modeExplorer', () => this.stop());
+
     const scale = [...this.selectedMode.intervals, 12];
     scale.forEach((semi, idx) => {
       const freq = TuningSystems.midiToFreq(this.tonicMidi + semi);
-      setTimeout(() => {
+      const timer = setTimeout(() => {
         instruments.playRhodes(freq, 0.9, null, 0.35);
       }, idx * 180);
+      this.activeTimeouts.push(timer);
     });
+
+    const endTimer = setTimeout(() => {
+      this.stop();
+    }, scale.length * 180 + 950);
+    this.activeTimeouts.push(endTimer);
   }
 
   async playMotif() {
+    this.stop();
     await instruments.ensureAudio();
-    // Play characteristic melody highlighting tonic, 3rd, and modal note
-    // E.g., [1, 3, 5, characteristic note, 5, 3, 1]
+    audioEngine.requestPlayback('modeExplorer', () => this.stop());
+
     const m = this.selectedMode.intervals;
     const melody = [
       { semi: m[0], dur: 0.25 },
@@ -259,11 +276,17 @@ export class ModeExplorer {
 
     let elapsed = 0;
     melody.forEach(n => {
-      setTimeout(() => {
+      const timer = setTimeout(() => {
         const freq = TuningSystems.midiToFreq(this.tonicMidi + n.semi);
         instruments.playViolin(freq, n.dur * 1.5, null, 0.35);
       }, elapsed * 1000);
+      this.activeTimeouts.push(timer);
       elapsed += n.dur;
     });
+
+    const endTimer = setTimeout(() => {
+      this.stop();
+    }, elapsed * 1000 + 1000);
+    this.activeTimeouts.push(endTimer);
   }
 }

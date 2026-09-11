@@ -17,6 +17,8 @@ export class HarmonicSeries {
     this.harmonics = TuningSystems.getHarmonicSeries(this.fundamentalFreq, 16);
     this.activeHarmonics = new Set([1]);
 
+    this.activeOscillators = [];
+
     this.initDOM();
     this.initSpiralCanvas();
     this.renderLadder();
@@ -106,6 +108,7 @@ export class HarmonicSeries {
 
     const playTriadBtn = this.container.querySelector('#playTriadBtn');
     playTriadBtn.addEventListener('click', async () => {
+      this.stop();
       await audioEngine.init();
       const f0 = this.fundamentalFreq;
       [4, 5, 6].forEach(n => {
@@ -119,11 +122,13 @@ export class HarmonicSeries {
         audioEngine.connect(gain);
         osc.start();
         osc.stop(audioEngine.currentTime + 1.85);
+        this.activeOscillators.push(osc);
       });
     });
 
     const playFullChordBtn = this.container.querySelector('#playFullChordBtn');
     playFullChordBtn.addEventListener('click', async () => {
+      this.stop();
       await audioEngine.init();
       const f0 = this.fundamentalFreq;
       for (let n = 1; n <= 8; n++) {
@@ -138,6 +143,7 @@ export class HarmonicSeries {
         audioEngine.connect(gain);
         osc.start();
         osc.stop(audioEngine.currentTime + 2.55);
+        this.activeOscillators.push(osc);
       }
     });
 
@@ -158,6 +164,7 @@ export class HarmonicSeries {
 
     const btnHearComma = this.container.querySelector('#btnHearComma');
     btnHearComma.addEventListener('click', async () => {
+      this.stop();
       await audioEngine.init();
       // Play pure C6 (~1046 Hz) vs B#6 (~1060 Hz) at safe, comfortable levels
       const fBase = 261.63; // C4
@@ -183,7 +190,17 @@ export class HarmonicSeries {
       oscB.start();
       oscA.stop(audioEngine.currentTime + 2.55);
       oscB.stop(audioEngine.currentTime + 2.55);
+      this.activeOscillators.push(oscA, oscB);
     });
+  }
+
+  stop() {
+    if (this.activeOscillators && this.activeOscillators.length > 0) {
+      this.activeOscillators.forEach(osc => {
+        try { osc.stop(); osc.disconnect(); } catch (e) {}
+      });
+      this.activeOscillators = [];
+    }
   }
 
   renderLadder() {

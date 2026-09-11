@@ -187,6 +187,22 @@ class HarmonixApp {
   switchTab(tabId) {
     this.activeTab = tabId;
 
+    // 1. Terminate all active audio, loops, sequencers, and background timers
+    audioEngine.stopAllPlayback();
+    for (const [key, inst] of Object.entries(this.instances)) {
+      if (inst) {
+        if (typeof inst.stop === 'function') {
+          try { inst.stop(); } catch (e) {}
+        }
+        if (typeof inst.stopAudio === 'function') {
+          try { inst.stopAudio(); } catch (e) {}
+        }
+        if (typeof inst.stopBeatsAudio === 'function') {
+          try { inst.stopBeatsAudio(); } catch (e) {}
+        }
+      }
+    }
+
     // Update Tab Buttons
     document.querySelectorAll('.nav-tab-btn').forEach(btn => {
       btn.classList.toggle('active', btn.dataset.tab === tabId);

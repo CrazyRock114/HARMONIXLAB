@@ -174,18 +174,20 @@ export class WaveformLab {
 
     // Toggle Beats Audio
     const toggleBeatsBtn = this.container.querySelector('#toggleBeatsBtn');
-    toggleBeatsBtn.addEventListener('click', async () => {
-      await audioEngine.init();
-      if (this.isPlayingBeats) {
-        this.stopBeatsAudio();
-        toggleBeatsBtn.textContent = '🔊 Start Audio';
-        toggleBeatsBtn.classList.remove('btn-danger');
-        toggleBeatsBtn.classList.add('btn-primary');
-      } else {
-        this.startBeatsAudio();
-        toggleBeatsBtn.textContent = '⏹ Stop Audio';
-        toggleBeatsBtn.classList.remove('btn-primary');
-        toggleBeatsBtn.classList.add('btn-danger');
+    let isPendingBeats = false;
+    toggleBeatsBtn.addEventListener('click', async (e) => {
+      if (e && typeof e.preventDefault === 'function') e.preventDefault();
+      if (isPendingBeats) return;
+      isPendingBeats = true;
+      try {
+        await audioEngine.init();
+        if (this.isPlayingBeats) {
+          this.stopBeatsAudio();
+        } else {
+          this.startBeatsAudio();
+        }
+      } finally {
+        isPendingBeats = false;
       }
     });
   }
@@ -223,9 +225,26 @@ export class WaveformLab {
     i18n.applyDomTranslations(this.container);
   }
 
+  updateBeatsButton(isPlaying) {
+    const toggleBeats = this.container ? this.container.querySelector('#toggleBeatsBtn') : null;
+    if (!toggleBeats) return;
+    const key = isPlaying ? 'physics.stopAudio' : 'physics.startAudio';
+    toggleBeats.textContent = i18n.t(key);
+    toggleBeats.setAttribute('data-i18n', key);
+    if (isPlaying) {
+      toggleBeats.classList.remove('btn-primary');
+      toggleBeats.classList.add('btn-danger');
+    } else {
+      toggleBeats.classList.remove('btn-danger');
+      toggleBeats.classList.add('btn-primary');
+    }
+  }
+
   startBeatsAudio() {
     if (!audioEngine.ctx) return;
     this.stopBeatsAudio();
+
+    audioEngine.requestPlayback('waveformLab', () => this.stopBeatsAudio());
 
     this.gainNode = audioEngine.ctx.createGain();
     this.gainNode.gain.setValueAtTime(0.10, audioEngine.currentTime);
@@ -245,6 +264,7 @@ export class WaveformLab {
     this.osc1.start();
     this.osc2.start();
     this.isPlayingBeats = true;
+    this.updateBeatsButton(true);
   }
 
   stopBeatsAudio() {
@@ -261,6 +281,16 @@ export class WaveformLab {
       this.gainNode = null;
     }
     this.isPlayingBeats = false;
+    audioEngine.releasePlayback('waveformLab');
+    this.updateBeatsButton(false);
+  }
+
+  stopAudio() {
+    this.stopBeatsAudio();
+  }
+
+  stop() {
+    this.stopBeatsAudio();
   }
 
   startAnimationLoop() {

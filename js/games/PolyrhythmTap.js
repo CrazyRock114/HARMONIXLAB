@@ -288,12 +288,20 @@ export class PolyrhythmTap {
   bindEvents() {
     const startBtn = this.container.querySelector('#btnStartGame');
     if (startBtn) {
-      startBtn.addEventListener('click', async () => {
-        await audioEngine.init();
-        if (this.isPlaying) {
-          this.stop();
-        } else {
-          this.start();
+      let isPending = false;
+      startBtn.addEventListener('click', async (e) => {
+        if (e && typeof e.preventDefault === 'function') e.preventDefault();
+        if (isPending) return;
+        isPending = true;
+        try {
+          await audioEngine.init();
+          if (this.isPlaying) {
+            this.stop();
+          } else {
+            this.start();
+          }
+        } finally {
+          isPending = false;
         }
       });
     }
@@ -509,6 +517,7 @@ export class PolyrhythmTap {
   }
 
   start() {
+    audioEngine.requestPlayback('polyrhythmTap', () => this.stop());
     this.isPlaying = true;
     this.isVictory = false;
     this.score = 0;
@@ -551,6 +560,7 @@ export class PolyrhythmTap {
     this.isPlaying = false;
     this.clearCountdown();
     if (this.animId && typeof cancelAnimationFrame === 'function') cancelAnimationFrame(this.animId);
+    audioEngine.releasePlayback('polyrhythmTap');
 
     const startBtn = this.container.querySelector('#btnStartGame');
     if (startBtn) {

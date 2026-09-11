@@ -211,20 +211,20 @@ export class StyleChameleon {
     });
 
     const toggleBtn = this.container.querySelector('#btnTogglePlayback');
-    toggleBtn.addEventListener('click', async () => {
-      await audioEngine.init();
-      if (this.isPlaying) {
-        this.stop();
-        toggleBtn.textContent = i18n.t('games.startPlaying');
-        toggleBtn.setAttribute('data-i18n', 'games.startPlaying');
-        toggleBtn.classList.remove('btn-danger');
-        toggleBtn.classList.add('btn-primary');
-      } else {
-        this.start();
-        toggleBtn.textContent = i18n.t('games.stopPlaying');
-        toggleBtn.setAttribute('data-i18n', 'games.stopPlaying');
-        toggleBtn.classList.remove('btn-primary');
-        toggleBtn.classList.add('btn-danger');
+    let isPending = false;
+    toggleBtn.addEventListener('click', async (e) => {
+      if (e && typeof e.preventDefault === 'function') e.preventDefault();
+      if (isPending) return;
+      isPending = true;
+      try {
+        await audioEngine.init();
+        if (this.isPlaying) {
+          this.stop();
+        } else {
+          await this.start();
+        }
+      } finally {
+        isPending = false;
       }
     });
 
@@ -247,13 +247,33 @@ export class StyleChameleon {
     });
   }
 
+  updateToggleButton(isPlaying) {
+    const toggleBtn = this.container ? this.container.querySelector('#btnTogglePlayback') : null;
+    if (!toggleBtn) return;
+    if (isPlaying) {
+      toggleBtn.textContent = i18n.t('games.stopPlaying');
+      toggleBtn.setAttribute('data-i18n', 'games.stopPlaying');
+      toggleBtn.classList.remove('btn-primary');
+      toggleBtn.classList.add('btn-danger');
+    } else {
+      toggleBtn.textContent = i18n.t('games.startPlaying');
+      toggleBtn.setAttribute('data-i18n', 'games.startPlaying');
+      toggleBtn.classList.remove('btn-danger');
+      toggleBtn.classList.add('btn-primary');
+    }
+  }
+
   async start() {
+    if (this.isPlaying) return;
     await instruments.ensureAudio();
     if (audioEngine.ctx && audioEngine.ctx.state === 'suspended') {
       try { await audioEngine.ctx.resume(); } catch (e) {}
     }
+    // Claim exclusive playback across the entire app
+    audioEngine.requestPlayback('styleChameleon', () => this.stop());
     this.isPlaying = true;
     this.currentNoteIndex = 0;
+    this.updateToggleButton(true);
     if (this.timerId) clearTimeout(this.timerId);
     this.tick();
   }
@@ -264,6 +284,8 @@ export class StyleChameleon {
       clearTimeout(this.timerId);
       this.timerId = null;
     }
+    audioEngine.releasePlayback('styleChameleon');
+    this.updateToggleButton(false);
     this.renderPianoRoll();
   }
 
@@ -301,32 +323,39 @@ export class StyleChameleon {
   tick() {
     if (!this.isPlaying) return;
 
-    const notes = this.currentMotif.notes;
+    const notes = this.currentMotif ? this.currentMotif.notes : null;
+    if (!notes || notes.length === 0) return;
+
+    if (this.currentNoteIndex >= notes.length) {
+      this.currentNoteIndex = 0;
+    }
+
     const note = notes[this.currentNoteIndex];
-    const root = this.currentMotif.rootMidi;
+    const root = (this.currentMotif && this.currentMotif.rootMidi) || 60;
     const style = this.currentStyle;
 
-    const adaptedStep = this.adaptPitchForStyle(note.step);
-    const leadMidi = root + adaptedStep;
-    const leadFreq = TuningSystems.midiToFreq(leadMidi);
-
-    const step16thDuration = (60000 / style.bpm) / 4;
-    const noteDurationMs = Math.max(50, note.dur * step16thDuration);
+    const bpm = Math.max(40, style ? style.bpm : 108);
+    const step16thDuration = (60000 / bpm) / 4;
+    const noteDurationMs = Math.max(50, (note ? note.dur : 4) * step16thDuration);
 
     try {
+      const adaptedStep = this.adaptPitchForStyle(note ? note.step : 0);
+      const leadMidi = root + adaptedStep;
+      const leadFreq = TuningSystems.midiToFreq(leadMidi);
+
       // 1. Play Lead Instrument
-      if (!this.mutes.lead) {
+      if (!this.mutes.lead && style.instruments && style.instruments.lead) {
         instruments.playInstrument(style.instruments.lead, leadFreq, (noteDurationMs / 1000) * 0.95, null, 0.4);
       }
 
       // 2. Play Bass & Chords
-      if (!this.mutes.bass) {
+      if (!this.mutes.bass && style.instruments && style.instruments.bass) {
         const bassMidi = root - 24 + (((adaptedStep % 12) + 12) % 12);
         const bassFreq = TuningSystems.midiToFreq(bassMidi);
         instruments.playInstrument(style.instruments.bass, bassFreq, Math.max(0.2, (noteDurationMs / 1000) * 1.1), null, 0.45);
       }
 
-      if (!this.mutes.chords) {
+      if (!this.mutes.chords && style.instruments && style.instruments.chords) {
         // Voicing based on genre
         let chordIntervals = [0, 4, 7]; // Major triad default
         if (style.id === 'jazz_bossa') {
@@ -377,7 +406,10 @@ export class StyleChameleon {
     // Always advance note index and schedule next tick so playback never halts!
     if (this.isPlaying) {
       this.currentNoteIndex = (this.currentNoteIndex + 1) % notes.length;
-      this.timerId = setTimeout(() => this.tick(), noteDurationMs);
+      if (this.timerId) clearTimeout(this.timerId);
+      this.timerId = setTimeout(() => {
+        if (this.isPlaying) this.tick();
+      }, noteDurationMs);
     }
   }
 

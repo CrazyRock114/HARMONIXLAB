@@ -100,18 +100,20 @@ export class FourierLab {
 
   bindEvents() {
     const toggleBtn = this.container.querySelector('#btnToggleFourierSound');
-    toggleBtn.addEventListener('click', async () => {
-      await audioEngine.init();
-      if (this.isPlaying) {
-        this.stopAudio();
-      } else {
-        this.startAudio();
+    let isPending = false;
+    toggleBtn.addEventListener('click', async (e) => {
+      if (e && typeof e.preventDefault === 'function') e.preventDefault();
+      if (isPending) return;
+      isPending = true;
+      try {
+        await audioEngine.init();
         if (this.isPlaying) {
-          toggleBtn.textContent = i18n.t('timbre.stopTimbre');
-          toggleBtn.setAttribute('data-i18n', 'timbre.stopTimbre');
-          toggleBtn.classList.remove('btn-primary');
-          toggleBtn.classList.add('btn-danger');
+          this.stopAudio();
+        } else {
+          this.startAudio();
         }
+      } finally {
+        isPending = false;
       }
     });
 
@@ -275,7 +277,20 @@ export class FourierLab {
     }
 
     audioEngine.connect(this.masterGain);
+    audioEngine.requestPlayback('fourierLab', () => this.stopAudio());
     this.isPlaying = true;
+
+    const toggleBtn = this.container ? this.container.querySelector('#btnToggleFourierSound') : null;
+    if (toggleBtn) {
+      toggleBtn.textContent = i18n.t('timbre.stopTimbre');
+      if (typeof toggleBtn.setAttribute === 'function') {
+        toggleBtn.setAttribute('data-i18n', 'timbre.stopTimbre');
+      }
+      if (toggleBtn.classList) {
+        toggleBtn.classList.remove('btn-primary');
+        toggleBtn.classList.add('btn-danger');
+      }
+    }
   }
 
   updateGainNodes() {
@@ -316,6 +331,7 @@ export class FourierLab {
     this.oscillators = [];
     this.gains = [];
     this.isPlaying = false;
+    audioEngine.releasePlayback('fourierLab');
 
     const toggleBtn = this.container ? this.container.querySelector('#btnToggleFourierSound') : null;
     if (toggleBtn) {
@@ -328,6 +344,10 @@ export class FourierLab {
         toggleBtn.classList.add('btn-primary');
       }
     }
+  }
+
+  stop() {
+    this.stopAudio();
   }
 
   startAnimationLoop() {

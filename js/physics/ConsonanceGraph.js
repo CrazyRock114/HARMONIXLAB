@@ -171,25 +171,43 @@ export class ConsonanceGraph {
       });
     });
 
-    toggleBtn.addEventListener('click', async () => {
-      await audioEngine.init();
-      if (this.isPlaying) {
-        this.stopAudio();
-        toggleBtn.textContent = '🔊 Audition Interval';
-        toggleBtn.classList.remove('btn-danger');
-        toggleBtn.classList.add('btn-primary');
-      } else {
-        this.startAudio();
-        toggleBtn.textContent = '⏹ Stop Sound';
-        toggleBtn.classList.remove('btn-primary');
-        toggleBtn.classList.add('btn-danger');
+    let isPending = false;
+    toggleBtn.addEventListener('click', async (e) => {
+      if (e && typeof e.preventDefault === 'function') e.preventDefault();
+      if (isPending) return;
+      isPending = true;
+      try {
+        await audioEngine.init();
+        if (this.isPlaying) {
+          this.stopAudio();
+        } else {
+          this.startAudio();
+        }
+      } finally {
+        isPending = false;
       }
     });
+  }
+
+  updateToggleButton(isPlaying) {
+    const toggleBtn = this.container ? this.container.querySelector('#btnToggleConsonanceSound') : null;
+    if (!toggleBtn) return;
+    if (isPlaying) {
+      toggleBtn.textContent = '⏹ Stop Sound';
+      toggleBtn.classList.remove('btn-primary');
+      toggleBtn.classList.add('btn-danger');
+    } else {
+      toggleBtn.textContent = '🔊 Audition Interval';
+      toggleBtn.classList.remove('btn-danger');
+      toggleBtn.classList.add('btn-primary');
+    }
   }
 
   startAudio() {
     if (!audioEngine.ctx) return;
     this.stopAudio();
+
+    audioEngine.requestPlayback('consonanceGraph', () => this.stopAudio());
 
     this.gain = audioEngine.ctx.createGain();
     this.gain.gain.setValueAtTime(0.10, audioEngine.currentTime);
@@ -223,6 +241,7 @@ export class ConsonanceGraph {
     this.osc1.start();
     this.osc2.start();
     this.isPlaying = true;
+    this.updateToggleButton(true);
   }
 
   stopAudio() {
@@ -230,6 +249,12 @@ export class ConsonanceGraph {
     if (this.osc2) { try { this.osc2.stop(); this.osc2.disconnect(); } catch (e) {} this.osc2 = null; }
     if (this.gain) { try { this.gain.disconnect(); } catch (e) {} this.gain = null; }
     this.isPlaying = false;
+    audioEngine.releasePlayback('consonanceGraph');
+    this.updateToggleButton(false);
+  }
+
+  stop() {
+    this.stopAudio();
   }
 
   renderGraph() {

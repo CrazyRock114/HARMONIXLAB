@@ -159,20 +159,20 @@ export class WorldGrooves {
 
   bindEvents() {
     const toggleBtn = this.container.querySelector('#btnToggleGroove');
-    toggleBtn.addEventListener('click', async () => {
-      await audioEngine.init();
-      if (this.isPlaying) {
-        this.stop();
-        toggleBtn.textContent = i18n.t('rhythm.playGroove');
-        toggleBtn.setAttribute('data-i18n', 'rhythm.playGroove');
-        toggleBtn.classList.remove('btn-danger');
-        toggleBtn.classList.add('btn-primary');
-      } else {
-        this.start();
-        toggleBtn.textContent = i18n.t('rhythm.stopGroove');
-        toggleBtn.setAttribute('data-i18n', 'rhythm.stopGroove');
-        toggleBtn.classList.remove('btn-primary');
-        toggleBtn.classList.add('btn-danger');
+    let isPending = false;
+    toggleBtn.addEventListener('click', async (e) => {
+      if (e && typeof e.preventDefault === 'function') e.preventDefault();
+      if (isPending) return;
+      isPending = true;
+      try {
+        await audioEngine.init();
+        if (this.isPlaying) {
+          this.stop();
+        } else {
+          await this.start();
+        }
+      } finally {
+        isPending = false;
       }
     });
 
@@ -226,15 +226,37 @@ export class WorldGrooves {
     });
   }
 
-  start() {
+  updateToggleButton(isPlaying) {
+    const toggleBtn = this.container ? this.container.querySelector('#btnToggleGroove') : null;
+    if (!toggleBtn) return;
+    if (isPlaying) {
+      toggleBtn.textContent = i18n.t('rhythm.stopGroove');
+      toggleBtn.setAttribute('data-i18n', 'rhythm.stopGroove');
+      toggleBtn.classList.remove('btn-primary');
+      toggleBtn.classList.add('btn-danger');
+    } else {
+      toggleBtn.textContent = i18n.t('rhythm.playGroove');
+      toggleBtn.setAttribute('data-i18n', 'rhythm.playGroove');
+      toggleBtn.classList.remove('btn-danger');
+      toggleBtn.classList.add('btn-primary');
+    }
+  }
+
+  async start() {
+    if (this.isPlaying) return;
+    await instruments.ensureAudio();
+    audioEngine.requestPlayback('worldGrooves', () => this.stop());
     this.isPlaying = true;
     this.currentStep = 0;
+    this.updateToggleButton(true);
     this.tick();
   }
 
   stop() {
     this.isPlaying = false;
     if (this.timerId) clearTimeout(this.timerId);
+    audioEngine.releasePlayback('worldGrooves');
+    this.updateToggleButton(false);
     this.updateGrooveUI();
   }
 

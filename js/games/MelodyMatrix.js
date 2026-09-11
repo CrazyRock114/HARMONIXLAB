@@ -165,20 +165,20 @@ export class MelodyMatrix {
     });
 
     const toggleBtn = this.container.querySelector('#btnToggleMatrix');
-    toggleBtn.addEventListener('click', async () => {
-      await audioEngine.init();
-      if (this.isPlaying) {
-        this.stop();
-        toggleBtn.textContent = i18n.t('games.playLoop');
-        toggleBtn.setAttribute('data-i18n', 'games.playLoop');
-        toggleBtn.classList.remove('btn-danger');
-        toggleBtn.classList.add('btn-primary');
-      } else {
-        this.start();
-        toggleBtn.textContent = i18n.t('games.stopLoop');
-        toggleBtn.setAttribute('data-i18n', 'games.stopLoop');
-        toggleBtn.classList.remove('btn-primary');
-        toggleBtn.classList.add('btn-danger');
+    let isPending = false;
+    toggleBtn.addEventListener('click', async (e) => {
+      if (e && typeof e.preventDefault === 'function') e.preventDefault();
+      if (isPending) return;
+      isPending = true;
+      try {
+        await audioEngine.init();
+        if (this.isPlaying) {
+          this.stop();
+        } else {
+          await this.start();
+        }
+      } finally {
+        isPending = false;
       }
     });
 
@@ -252,16 +252,37 @@ export class MelodyMatrix {
     }
   }
 
+  updateToggleButton(isPlaying) {
+    const toggleBtn = this.container ? this.container.querySelector('#btnToggleMatrix') : null;
+    if (!toggleBtn) return;
+    if (isPlaying) {
+      toggleBtn.textContent = i18n.t('games.stopLoop');
+      toggleBtn.setAttribute('data-i18n', 'games.stopLoop');
+      toggleBtn.classList.remove('btn-primary');
+      toggleBtn.classList.add('btn-danger');
+    } else {
+      toggleBtn.textContent = i18n.t('games.playLoop');
+      toggleBtn.setAttribute('data-i18n', 'games.playLoop');
+      toggleBtn.classList.remove('btn-danger');
+      toggleBtn.classList.add('btn-primary');
+    }
+  }
+
   async start() {
+    if (this.isPlaying) return;
     await instruments.ensureAudio();
+    audioEngine.requestPlayback('melodyMatrix', () => this.stop());
     this.isPlaying = true;
     this.currentStep = 0;
+    this.updateToggleButton(true);
     this.tick();
   }
 
   stop() {
     this.isPlaying = false;
     if (this.timerId) clearTimeout(this.timerId);
+    audioEngine.releasePlayback('melodyMatrix');
+    this.updateToggleButton(false);
     this.renderMatrix();
   }
 

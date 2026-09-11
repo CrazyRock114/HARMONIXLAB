@@ -13,6 +13,8 @@ export class AudioEngine {
     this.volume = 0.35;
     this.bpm = 120;
     this.onStateChangeCallbacks = [];
+    this.activePlayerId = null;
+    this.activePlayerStopCallback = null;
   }
 
   /**
@@ -133,6 +135,60 @@ export class AudioEngine {
   getFrequencyData(outputArray) {
     if (!this.analyser) return;
     this.analyser.getByteFrequencyData(outputArray);
+  }
+
+  /**
+   * Request exclusive playback across the entire application.
+   * If another audio source, song, or loop is active, cleanly stops it first.
+   * @param {string} id - Unique identifier for the audio component
+   * @param {Function} stopCallback - Callback to cleanly stop this playback when interrupted
+   */
+  requestPlayback(id, stopCallback) {
+    if (this.activePlayerId && this.activePlayerId !== id) {
+      if (typeof this.activePlayerStopCallback === 'function') {
+        try {
+          this.activePlayerStopCallback();
+        } catch (err) {
+          console.warn(`[AudioEngine] Error stopping previous playback [${this.activePlayerId}]:`, err);
+        }
+      }
+    }
+    this.activePlayerId = id;
+    this.activePlayerStopCallback = stopCallback;
+  }
+
+  /**
+   * Release active playback status when a component stops naturally or voluntarily
+   * @param {string} id - Component identifier
+   */
+  releasePlayback(id) {
+    if (this.activePlayerId === id) {
+      this.activePlayerId = null;
+      this.activePlayerStopCallback = null;
+    }
+  }
+
+  /**
+   * Unconditionally stop all active audio playback, loops, and synthesizers across the entire app.
+   * Used on tab changes or global pause gestures.
+   */
+  stopAllPlayback() {
+    if (typeof this.activePlayerStopCallback === 'function') {
+      try {
+        this.activePlayerStopCallback();
+      } catch (err) {
+        console.warn(`[AudioEngine] Error stopping active player [${this.activePlayerId}]:`, err);
+      }
+    }
+    this.activePlayerId = null;
+    this.activePlayerStopCallback = null;
+  }
+
+  /**
+   * Get ID of currently playing component (or null if silent)
+   */
+  getActivePlayerId() {
+    return this.activePlayerId;
   }
 }
 
