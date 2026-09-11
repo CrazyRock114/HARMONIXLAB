@@ -201,13 +201,21 @@ export class SynthInstruments {
     osc.type = 'sine';
     osc.frequency.setValueAtTime(freq, t);
 
-    // Subtle warm 2nd harmonic overtone
+    // Warm 2nd harmonic overtone (octave)
     const osc2 = this.ctx.createOscillator();
     osc2.type = 'triangle';
     osc2.frequency.setValueAtTime(freq * 2, t);
     const osc2Gain = this.ctx.createGain();
-    osc2Gain.gain.setValueAtTime(0.04, t);
+    osc2Gain.gain.setValueAtTime(0.18, t);
     osc2.connect(osc2Gain);
+
+    // Hollow pipe 3rd harmonic overtone (twelfth) for authentic acoustic body
+    const osc3 = this.ctx.createOscillator();
+    osc3.type = 'sine';
+    osc3.frequency.setValueAtTime(freq * 3, t);
+    const osc3Gain = this.ctx.createGain();
+    osc3Gain.gain.setValueAtTime(0.08, t);
+    osc3.connect(osc3Gain);
 
     // Vibrato LFO
     const lfo = this.ctx.createOscillator();
@@ -236,20 +244,20 @@ export class SynthInstruments {
     noiseFilter.Q.setValueAtTime(1.5, t);
 
     const noiseGain = this.ctx.createGain();
-    noiseGain.gain.setValueAtTime(0.015, t);
+    noiseGain.gain.setValueAtTime(0.02, t);
     noiseGain.gain.linearRampToValueAtTime(0.0001, t + noiseDuration);
 
     noise.connect(noiseFilter);
     noiseFilter.connect(noiseGain);
 
-    // Master Tone Lowpass Filter
+    // Master Tone Lowpass Filter with gentle acoustic formant presence
     const filter = this.ctx.createBiquadFilter();
     filter.type = 'lowpass';
-    filter.frequency.setValueAtTime(Math.min(3000, freq * 3.5), t);
-    filter.Q.setValueAtTime(0.7, t);
+    filter.frequency.setValueAtTime(Math.min(3800, freq * 4.2), t);
+    filter.Q.setValueAtTime(1.0, t);
 
     const env = this.ctx.createGain();
-    const att = Math.min(0.06, dur * 0.2);
+    const att = Math.min(0.05, dur * 0.18);
     const rel = Math.min(0.08, dur * 0.25);
     const tAtt = t + att;
     const tRel = Math.max(tAtt + 0.005, t + dur - rel);
@@ -258,12 +266,13 @@ export class SynthInstruments {
     env.gain.setValueAtTime(0.0001, t);
     env.gain.linearRampToValueAtTime(gain, tAtt);
     if (tRel > tAtt) {
-      env.gain.setValueAtTime(gain * 0.85, tRel);
+      env.gain.setValueAtTime(gain * 0.88, tRel);
     }
     env.gain.linearRampToValueAtTime(0.0001, tEnd);
 
     osc.connect(filter);
     osc2Gain.connect(filter);
+    osc3Gain.connect(filter);
     noiseGain.connect(filter);
     filter.connect(env);
 
@@ -271,11 +280,13 @@ export class SynthInstruments {
 
     osc.start(t);
     osc2.start(t);
+    osc3.start(t);
     lfo.start(t);
     noise.start(t);
 
     osc.stop(tEnd);
     osc2.stop(tEnd);
+    osc3.stop(tEnd);
     lfo.stop(tEnd);
     noise.stop(t + noiseDuration);
   }
@@ -591,7 +602,7 @@ export class SynthInstruments {
       case 'flute':
       case 'dizi':
       case 'tinWhistle':
-        return this.playFlute(freq, duration, startTime, gain);
+        return this.playFlute(freq, duration, startTime, gain * 1.25);
       case 'violin':
         return this.playViolin(freq, duration, startTime, gain);
       case 'cello':

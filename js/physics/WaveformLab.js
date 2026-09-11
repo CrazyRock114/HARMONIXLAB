@@ -129,17 +129,41 @@ export class WaveformLab {
     playHarmonicBtn.addEventListener('click', async () => {
       await audioEngine.init();
       const fundamental = 130.81; // C3
-      const freq = fundamental * this.standingMode;
+      const n = this.standingMode;
+      const freq = fundamental * n;
+      const t = audioEngine.currentTime;
+
+      // Equal-loudness compensation:
+      // Lower frequencies (n=1 at 130Hz) require higher gain to match perceived volume of higher modes
+      const baseGain = Math.min(0.38, 0.12 * Math.pow(4.5 / n, 0.7));
+
+      // Fundamental oscillator
       const osc = audioEngine.ctx.createOscillator();
-      const gain = audioEngine.ctx.createGain();
       osc.type = 'sine';
-      osc.frequency.setValueAtTime(freq, audioEngine.currentTime);
-      gain.gain.setValueAtTime(0.14, audioEngine.currentTime);
-      gain.gain.linearRampToValueAtTime(0.0001, audioEngine.currentTime + 1.2);
+      osc.frequency.setValueAtTime(freq, t);
+
+      // Warm overtone resonance (essential for vibrating string physics & mobile speaker projection)
+      const oscOvertone = audioEngine.ctx.createOscillator();
+      oscOvertone.type = 'triangle';
+      oscOvertone.frequency.setValueAtTime(freq * 2, t);
+
+      const gain = audioEngine.ctx.createGain();
+      gain.gain.setValueAtTime(baseGain, t);
+      gain.gain.linearRampToValueAtTime(0.0001, t + 1.3);
+
+      const overtoneGain = audioEngine.ctx.createGain();
+      overtoneGain.gain.setValueAtTime(baseGain * 0.35, t);
+      overtoneGain.gain.linearRampToValueAtTime(0.0001, t + 1.1);
+
       osc.connect(gain);
+      oscOvertone.connect(overtoneGain);
       audioEngine.connect(gain);
-      osc.start();
-      osc.stop(audioEngine.currentTime + 1.25);
+      audioEngine.connect(overtoneGain);
+
+      osc.start(t);
+      oscOvertone.start(t);
+      osc.stop(t + 1.35);
+      oscOvertone.stop(t + 1.35);
     });
 
     // Frequency Sliders

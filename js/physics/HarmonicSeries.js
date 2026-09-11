@@ -240,16 +240,35 @@ export class HarmonicSeries {
       const playBtn = row.querySelector('.btn-icon-play');
       playBtn.addEventListener('click', async () => {
         await audioEngine.init();
+        const t = audioEngine.currentTime;
         const osc = audioEngine.ctx.createOscillator();
         const gain = audioEngine.ctx.createGain();
         osc.type = 'sine';
-        osc.frequency.setValueAtTime(h.freq, audioEngine.currentTime);
-        gain.gain.setValueAtTime(0.12, audioEngine.currentTime);
-        gain.gain.linearRampToValueAtTime(0.0001, audioEngine.currentTime + 1.2);
+        osc.frequency.setValueAtTime(h.freq, t);
+
+        // Equal-loudness compensation for lower fundamental frequencies
+        const amp = Math.min(0.34, 0.12 * Math.pow(350 / Math.max(65, h.freq), 0.55));
+        gain.gain.setValueAtTime(amp, t);
+        gain.gain.linearRampToValueAtTime(0.0001, t + 1.25);
         osc.connect(gain);
         audioEngine.connect(gain);
-        osc.start();
-        osc.stop(audioEngine.currentTime + 1.25);
+
+        // For frequencies below 200 Hz (like fundamental C2/C3), add a gentle 2nd harmonic so mobile speakers can hear it
+        if (h.freq < 200) {
+          const osc2 = audioEngine.ctx.createOscillator();
+          const gain2 = audioEngine.ctx.createGain();
+          osc2.type = 'triangle';
+          osc2.frequency.setValueAtTime(h.freq * 2, t);
+          gain2.gain.setValueAtTime(amp * 0.35, t);
+          gain2.gain.linearRampToValueAtTime(0.0001, t + 1.1);
+          osc2.connect(gain2);
+          audioEngine.connect(gain2);
+          osc2.start(t);
+          osc2.stop(t + 1.15);
+        }
+
+        osc.start(t);
+        osc.stop(t + 1.30);
       });
 
       ladder.appendChild(row);

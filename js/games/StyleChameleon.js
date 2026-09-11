@@ -23,6 +23,7 @@ export class StyleChameleon {
     this.currentStyle = this.styles[0]; // Classical
     this.isPlaying = false;
     this.currentNoteIndex = 0;
+    this.activeNoteIndex = -1;
     this.timerId = null;
 
     // Track Mutes
@@ -205,17 +206,27 @@ export class StyleChameleon {
   bindEvents() {
     const motifSelect = this.container.querySelector('#motifSelect');
     motifSelect.addEventListener('change', (e) => {
-      this.currentMotif = this.motifs[e.target.value];
+      const wasPlaying = this.isPlaying;
+      this.stop();
+      this.currentMotif = this.motifs[e.target.value] || this.motifs.odeToJoy;
       this.currentNoteIndex = 0;
+      this.activeNoteIndex = -1;
       this.renderPianoRoll();
+      if (wasPlaying) {
+        this.start();
+      }
     });
 
     const toggleBtn = this.container.querySelector('#btnTogglePlayback');
     let isPending = false;
+    let lastToggleTime = 0;
     toggleBtn.addEventListener('click', async (e) => {
       if (e && typeof e.preventDefault === 'function') e.preventDefault();
+      const now = Date.now();
+      if (now - lastToggleTime < 300) return; // Prevent accidental rapid double-tap toggle
       if (isPending) return;
       isPending = true;
+      lastToggleTime = now;
       try {
         await audioEngine.init();
         if (this.isPlaying) {
@@ -273,13 +284,19 @@ export class StyleChameleon {
     audioEngine.requestPlayback('styleChameleon', () => this.stop());
     this.isPlaying = true;
     this.currentNoteIndex = 0;
+    this.activeNoteIndex = 0;
     this.updateToggleButton(true);
-    if (this.timerId) clearTimeout(this.timerId);
+    if (this.timerId) {
+      clearTimeout(this.timerId);
+      this.timerId = null;
+    }
     this.tick();
   }
 
   stop() {
     this.isPlaying = false;
+    this.currentNoteIndex = 0;
+    this.activeNoteIndex = -1;
     if (this.timerId) {
       clearTimeout(this.timerId);
       this.timerId = null;
@@ -330,7 +347,9 @@ export class StyleChameleon {
       this.currentNoteIndex = 0;
     }
 
-    const note = notes[this.currentNoteIndex];
+    const noteIdx = this.currentNoteIndex;
+    this.activeNoteIndex = noteIdx;
+    const note = notes[noteIdx];
     const root = (this.currentMotif && this.currentMotif.rootMidi) || 60;
     const style = this.currentStyle;
 
@@ -343,9 +362,10 @@ export class StyleChameleon {
       const leadMidi = root + adaptedStep;
       const leadFreq = TuningSystems.midiToFreq(leadMidi);
 
-      // 1. Play Lead Instrument
+      // 1. Play Lead Instrument (boosted for Jazz/Bossa to ensure flute sings above 5-note chords)
       if (!this.mutes.lead && style.instruments && style.instruments.lead) {
-        instruments.playInstrument(style.instruments.lead, leadFreq, (noteDurationMs / 1000) * 0.95, null, 0.4);
+        const leadGain = (style.id === 'jazz_bossa') ? 0.60 : 0.42;
+        instruments.playInstrument(style.instruments.lead, leadFreq, (noteDurationMs / 1000) * 0.95, null, leadGain);
       }
 
       // 2. Play Bass & Chords
@@ -369,26 +389,29 @@ export class StyleChameleon {
           chordIntervals = [0, 4, 7]; // Staccato triad
         }
 
+        // Dynamically scale chord note gain so 5-note jazz chords do not overwhelm the lead melody
+        const chordGain = (chordIntervals.length >= 5 ? 0.11 : (chordIntervals.length >= 4 ? 0.14 : 0.20));
+
         chordIntervals.forEach(ci => {
           const chordFreq = TuningSystems.midiToFreq(root - 12 + ci);
-          instruments.playInstrument(style.instruments.chords, chordFreq, Math.max(0.15, (noteDurationMs / 1000) * 0.9), null, 0.22);
+          instruments.playInstrument(style.instruments.chords, chordFreq, Math.max(0.15, (noteDurationMs / 1000) * 0.9), null, chordGain);
         });
       }
 
       // 3. Play Drum Groove per genre
       if (!this.mutes.drums) {
         if (style.id === 'jazz_bossa') {
-          instruments.playDrum('clave', null, 0.5);
-          instruments.playDrum('hihat', null, 0.3);
+          instruments.playDrum('clave', null, 0.45);
+          instruments.playDrum('hihat', null, 0.25);
         } else if (style.id === 'cyberpunk') {
           instruments.playDrum('kick', null, 0.85);
-          if (this.currentNoteIndex % 2 === 1) instruments.playDrum('snare', null, 0.7);
+          if (noteIdx % 2 === 1) instruments.playDrum('snare', null, 0.7);
           instruments.playDrum('hihat', null, 0.4);
         } else if (style.id === 'sizhu') {
-          if (this.currentNoteIndex % 4 === 0) instruments.playDrum('woodblock', null, 0.6);
+          if (noteIdx % 4 === 0) instruments.playDrum('woodblock', null, 0.6);
         } else if (style.id === 'reggae_dub') {
           // One drop: snare + kick together on 3rd beat
-          if (this.currentNoteIndex % 2 === 1) {
+          if (noteIdx % 2 === 1) {
             instruments.playDrum('snare', null, 0.8);
             instruments.playDrum('kick', null, 0.7);
           }
@@ -405,7 +428,7 @@ export class StyleChameleon {
 
     // Always advance note index and schedule next tick so playback never halts!
     if (this.isPlaying) {
-      this.currentNoteIndex = (this.currentNoteIndex + 1) % notes.length;
+      this.currentNoteIndex = (noteIdx + 1) % notes.length;
       if (this.timerId) clearTimeout(this.timerId);
       this.timerId = setTimeout(() => {
         if (this.isPlaying) this.tick();
@@ -441,7 +464,7 @@ export class StyleChameleon {
       const adapted = this.adaptPitchForStyle(n.step);
       const normY = (adapted - minStep + 1) / range;
       const y = height - 25 - normY * (height - 50);
-      const isCurrent = this.isPlaying && idx === ((this.currentNoteIndex - 1 + notes.length) % notes.length);
+      const isCurrent = this.isPlaying && idx === this.activeNoteIndex;
 
       // Note bar
       ctx.fillStyle = isCurrent ? '#ffffff' : (this.currentStyle.id === 'cyberpunk' ? '#f43f5e' : (this.currentStyle.id === 'sizhu' ? '#f59e0b' : '#00f2fe'));
